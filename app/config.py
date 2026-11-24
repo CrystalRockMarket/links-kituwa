@@ -21,13 +21,13 @@ class Settings:
     secret: bytes
     host: str = "127.0.0.1"
     port: int = 8848
-    base_url: str = "http://127.0.0.1:8848"
+    base_url: str = "https://links.kituwa.com"
     cookie_secure: bool = False
     ip_mode: str = "full"          # full | truncated | hashed
     session_days: int = 30
     max_body: int = 64 * 1024
     smtp_host: str | None = None
-    mail_from: str = "Secret Link <secret-link@kituwa.com>"
+    mail_from: str = "Secret Link <links@kituwa.com>"
     allow_signup: bool = True
 
     def with_base(self, base_url: str) -> "Settings":
@@ -58,7 +58,7 @@ def load_settings() -> Settings:
     ip_mode = os.environ.get("SL_IP_MODE", "full").strip().lower()
     if ip_mode not in {"full", "truncated", "hashed"}:
         raise SystemExit(f"SL_IP_MODE must be full|truncated|hashed, got {ip_mode!r}")
-    base_url = os.environ.get("SL_BASE_URL", "http://127.0.0.1:8848").rstrip("/")
+    base_url = os.environ.get("SL_BASE_URL", "https://links.kituwa.com").rstrip("/")
     return Settings(
         data_dir=data_dir,
         secret=_load_secret(data_dir),
@@ -69,6 +69,6 @@ def load_settings() -> Settings:
         ip_mode=ip_mode,
         session_days=int(os.environ.get("SL_SESSION_DAYS", "30")),
         smtp_host=os.environ.get("SL_SMTP_HOST") or None,
-        mail_from=os.environ.get("SL_MAIL_FROM", "Secret Link <secret-link@kituwa.com>"),
+        mail_from=os.environ.get("SL_MAIL_FROM", "Secret Link <links@kituwa.com>"),
         allow_signup=_bool("SL_ALLOW_SIGNUP", True),
     )

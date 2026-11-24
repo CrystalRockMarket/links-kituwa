@@ -1,0 +1,22 @@
+[Unit]
+Description=links.kituwa.com — short links that expire by use
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/services/links-kituwa
+Environment=SL_DATA_DIR=/home/ubuntu/services/links-kituwa/data
+Environment=SL_BASE_URL=https://links.kituwa.com
+Environment=SL_HOST=127.0.0.1
+Environment=SL_PORT=8891
+Environment=SL_COOKIE_SECURE=1
+Environment=SL_IP_MODE=full
+ExecStart=/home/ubuntu/services/links-kituwa/.venv/bin/python run.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -50,11 +50,11 @@ def test_create_link_and_open_flow(client, conn, settings):
     link = conn.execute("SELECT * FROM links").fetchone()
     assert link["label"] == "Doc" and link["max_uses"] == 1
 
-    ok = client.get(f"/s/{link['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
+    ok = client.get(f"/{link['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
     assert ok.status_code == 302 and ok.headers["Location"] == "https://example.com/target"
     assert ok.headers["Cache-Control"].startswith("no-store")
 
-    again = client.get(f"/s/{link['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
+    again = client.get(f"/{link['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
     assert again.status_code == 410
     assert "closed" in again.get_data(as_text=True)
 
@@ -67,12 +67,12 @@ def test_preview_request_does_not_burn_one_time_link(client, conn):
                                   "max_uses": "1"})
     code = conn.execute("SELECT code FROM links").fetchone()["code"]
 
-    head = client.get(f"/s/{code}", headers={"User-Agent": "facebookexternalhit/1.1"})
+    head = client.get(f"/{code}", headers={"User-Agent": "facebookexternalhit/1.1"})
     assert head.status_code == 200 and "Continue" in head.get_data(as_text=True)
     assert conn.execute("SELECT uses FROM links WHERE code=?", (code,)).fetchone()["uses"] == 0
 
     # the human click through the interstitial does consume it
-    assert client.get(f"/s/{code}?go=1", headers={"User-Agent": "Mozilla/5.0 person"}).status_code == 302
+    assert client.get(f"/{code}?go=1", headers={"User-Agent": "Mozilla/5.0 person"}).status_code == 302
     assert conn.execute("SELECT uses FROM links WHERE code=?", (code,)).fetchone()["uses"] == 1
 
 
@@ -85,9 +85,9 @@ def test_track_mode_interstitial_does_not_double_count(client, conn):
     row = conn.execute("SELECT * FROM links").fetchone()
     assert row["max_uses"] is None and row["mode"] == "track"
 
-    first = client.get(f"/s/{row['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
+    first = client.get(f"/{row['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
     assert first.status_code == 200 and "Pass this link on" in first.get_data(as_text=True)
-    second = client.get(f"/s/{row['code']}?go=1", headers={"User-Agent": "Mozilla/5.0 person"})
+    second = client.get(f"/{row['code']}?go=1", headers={"User-Agent": "Mozilla/5.0 person"})
     assert second.status_code == 302
     assert conn.execute("SELECT uses FROM links WHERE id=?", (row["id"],)).fetchone()["uses"] == 1
 
@@ -118,6 +118,27 @@ def test_bad_code_is_404(client):
     assert client.get("/s/zzzzzzzz").status_code == 404
 
 
+def test_short_path_does_not_shadow_the_app(client, conn):
+    # static routes win over /<code>, and the /s/ alias still resolves
+    assert client.get("/login").status_code == 200
+    assert client.get("/app").status_code == 302
+    assert client.get("/healthz").status_code == 200
+    make_account(conn)
+    link = conn.execute("SELECT 1").fetchone()
+    assert link is not None
+
+
+def test_legacy_s_alias_still_opens_a_link(client, conn):
+    make_account(conn)
+    signin(client)
+    page = client.get("/app").get_data(as_text=True)
+    client.post("/app/new", data={"csrf": csrf(page), "target": "https://example.com/alias",
+                                  "max_uses": "1"})
+    code = conn.execute("SELECT code FROM links").fetchone()["code"]
+    r = client.get(f"/s/{code}", headers={"User-Agent": "Mozilla/5.0 person"})
+    assert r.status_code == 302 and r.headers["Location"] == "https://example.com/alias"
+
+
 def test_share_endpoint_mints_attributed_link(client, conn):
     make_account(conn)
     signin(client)
@@ -126,14 +147,14 @@ def test_share_endpoint_mints_attributed_link(client, conn):
                                   "max_uses": "0"})
     code = conn.execute("SELECT code FROM links").fetchone()["code"]
     ua = {"User-Agent": "Mozilla/5.0 sharer"}
-    client.get(f"/s/{code}", headers=ua)          # becomes a known visitor
-    r = client.post(f"/s/{code}/share", headers=ua)
+    client.get(f"/{code}", headers=ua)          # becomes a known visitor
+    r = client.post(f"/{code}/share", headers=ua)
     assert r.status_code == 200 and r.get_json()["ok"]
     digest = conn.execute("SELECT COUNT(*) c FROM share_tokens").fetchone()["c"]
     assert digest == 1
 
     # a different person arriving through that token is attributed and alerted
     via = r.get_json()["url"].split("via=")[1]
-    client.get(f"/s/{code}?via={via}", headers={"User-Agent": "Mozilla/5.0 receiver"})
+    client.get(f"/{code}?via={via}", headers={"User-Agent": "Mozilla/5.0 receiver"})
     assert conn.execute("SELECT opens FROM share_tokens").fetchone()["opens"] == 1
     assert conn.execute("SELECT COUNT(*) c FROM alerts WHERE kind='shared'").fetchone()["c"] >= 1

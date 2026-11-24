@@ -34,7 +34,7 @@ identity:
    budgeted link raises `new_visitor`.
 2. **Referrer** — a mail or messaging host in the `Referer` header raises
    `shared`, with the host preserved.
-3. **Pass-along token** — a recipient can mint `…/s/<code>?via=<token>`; each
+3. **Pass-along token** — a recipient can mint `…/<code>?via=<token>`; each
    token belongs to the visitor who created it, and every open through it is
    attributed and alerted.
 

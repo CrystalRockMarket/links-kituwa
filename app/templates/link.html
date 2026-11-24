@@ -7,7 +7,7 @@
     <span class="badge {{ state|replace(' ', '-') }}">{{ state }}</span>
   </div>
   <p class="short">
-    <input id="shorturl" class="mono" readonly value="{{ base_url }}/s/{{ link['code'] }}">
+    <input id="shorturl" class="mono" readonly value="{{ base_url }}/{{ link['code'] }}">
     <button type="button" class="ghost" data-copy="#shorturl">Copy</button>
   </p>
   <p class="muted">Destination: <span class="mono">{{ link['target'] }}</span></p>
@@ -62,7 +62,7 @@
   <ul class="alerts">
     {% for s in shares %}
       <li><span class="kind">{{ s['opens'] }} opens</span>
-        <span class="mono">{{ base_url }}/s/{{ link['code'] }}?via={{ s['token'] }}</span>
+        <span class="mono">{{ base_url }}/{{ link['code'] }}?via={{ s['token'] }}</span>
         <time>{{ s['created_at']|dt }}</time></li>
     {% endfor %}
   </ul>

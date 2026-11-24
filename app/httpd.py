@@ -302,7 +302,9 @@ def create_app(settings: Settings) -> Flask:
         return render_template("settings.html")
 
     # --- the short link surface -------------------------------------------
-    @app.get("/s/<code>")
+    # The public short URL is the bare path on links.kituwa.com: /<code>.
+    # /s/<code> stays as an alias so earlier links and bookmarks keep working.
+    @app.get("/<code>")
     def open_link(code: str):
         if not security.valid_code(code):
             return render_template("message.html", title="No such link",
@@ -338,7 +340,15 @@ def create_app(settings: Settings) -> Flask:
         resp.headers["Cache-Control"] = "no-store, max-age=0"
         return resp
 
+    @app.get("/s/<code>")
+    def open_link_alias(code: str):
+        return open_link(code)
+
     @app.post("/s/<code>/share")
+    def share_link_alias(code: str):
+        return share_link(code)
+
+    @app.post("/<code>/share")
     def share_link(code: str):
         origin = request.headers.get("Origin") or ""
         if origin and origin.rstrip("/") != settings.base_url:
@@ -349,7 +359,7 @@ def create_app(settings: Settings) -> Flask:
         token = tracking.mint_share(conn(), code, fp)
         if token is None:
             return jsonify(ok=False, error="Open the link yourself before forwarding it."), 409
-        return jsonify(ok=True, url=f"{settings.base_url}/s/{code}?via={token}")
+        return jsonify(ok=True, url=f"{settings.base_url}/{code}?via={token}")
 
     return app
 

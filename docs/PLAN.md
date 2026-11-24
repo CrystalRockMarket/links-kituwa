@@ -21,7 +21,7 @@ Pack 2.27.0. Protocols applied: **01, 02, 05, 13, 15, 16, 18, 21, 22, 24, 27,
      new registered domain plus DNS and a certificate.
    - B. `s.kituwa.com/<code>` — no new domain, one DNS record, 8 characters
      typed instead of 12.
-   - C. `secret-link.kituwa.com/s/<code>` — no new DNS name at all; longest.
+   - C. `links.kituwa.com/<code>` — no new DNS name at all; longest.
    - Recommendation: **B** unless the bare `kituwa.link` name matters enough to
      buy and own it.
 2. **Who may create pass-along links.** Attribution only works if a recipient

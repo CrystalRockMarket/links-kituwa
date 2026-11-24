@@ -57,7 +57,7 @@
     {% for l in links %}
       <tr>
         <td><a href="{{ url_for('link_detail', link_id=l['id']) }}">{{ l['label'] or l['code'] }}</a></td>
-        <td class="mono">/s/{{ l['code'] }}</td>
+        <td class="mono">/{{ l['code'] }}</td>
         <td>{{ l['uses'] }}{% if l['max_uses'] is not none %} / {{ l['max_uses'] }}{% else %} / ∞{% endif %}</td>
         <td>{{ l['visitors'] }}</td>
         <td class="muted">{{ l['created_at']|dt }}</td>
