@@ -9,7 +9,7 @@ from functools import wraps
 from flask import (Flask, Response, abort, g, jsonify, redirect, render_template,
                    request, session, url_for)
 
-from . import db, mail, security, tracking
+from . import db, mail, oidc, security, tracking
 from .config import Settings
 
 
@@ -206,6 +206,89 @@ def create_app(settings: Settings) -> Flask:
         if token:
             conn().execute("DELETE FROM sessions WHERE token=?", (security.token_digest(token),))
         session.clear()
+        return redirect(url_for("home"))
+
+    # --- operator console (Pocket ID, operators group) --------------------
+    def admin_ok() -> bool:
+        return bool(session.get("admin"))
+
+    def admin_require():
+        if not admin_ok():
+            return redirect(url_for("admin_login"))
+        return None
+
+    @app.get("/admin")
+    def admin_home():
+        gate = admin_require()
+        if gate is not None:
+            return gate
+        today = security.utcnow()[:10]
+        stats = {
+            "accounts": conn().execute("SELECT COUNT(*) c FROM accounts").fetchone()["c"],
+            "links": conn().execute("SELECT COUNT(*) c FROM links").fetchone()["c"],
+            "active": conn().execute(
+                "SELECT COUNT(*) c FROM links WHERE destroyed_at IS NULL AND disabled_at IS NULL "
+                "AND (max_uses IS NULL OR uses < max_uses)").fetchone()["c"],
+            "destroyed": conn().execute(
+                "SELECT COUNT(*) c FROM links WHERE destroyed_at IS NOT NULL").fetchone()["c"],
+            "opens": conn().execute("SELECT COUNT(*) c FROM opens WHERE kind='open'").fetchone()["c"],
+            "today": conn().execute(
+                "SELECT COUNT(*) c FROM opens WHERE kind='open' AND ts LIKE ?", (today + "%",)
+            ).fetchone()["c"],
+            "previews": conn().execute("SELECT COUNT(*) c FROM opens WHERE kind='preview'").fetchone()["c"],
+            "alerts": conn().execute("SELECT COUNT(*) c FROM alerts").fetchone()["c"],
+        }
+        links = conn().execute(
+            "SELECT l.*, a.email, (SELECT COUNT(*) FROM opens o WHERE o.link_id=l.id AND o.kind='open') ops "
+            "FROM links l JOIN accounts a ON a.id=l.account_id ORDER BY l.id DESC LIMIT 50"
+        ).fetchall()
+        return render_template("admin.html", stats=stats, links=links,
+                               who=session.get("admin", {}))
+
+    @app.get("/admin/login")
+    def admin_login():
+        if not settings.oidc_client_id:
+            return render_template("message.html", title="Operator sign-in is not configured",
+                                   body="No Pocket ID client is wired to this service."), 503
+        flow = oidc.begin(settings.oidc_issuer, settings.oidc_client_id,
+                          settings.base_url + "/admin/oidc/callback")
+        session["oidc"] = {"state": flow["state"], "nonce": flow["nonce"],
+                           "verifier": flow["verifier"], "token_endpoint": flow["token_endpoint"]}
+        return redirect(flow["url"])
+
+    @app.get("/admin/oidc/callback")
+    def admin_callback():
+        flow = session.pop("oidc", None)
+        if not flow:
+            abort(400, "No sign-in in progress.")
+        if request.args.get("state") != flow["state"]:
+            abort(400, "State mismatch.")
+        code = request.args.get("code")
+        if not code:
+            abort(400, "No authorization code.")
+        try:
+            tokens = oidc.exchange(flow["token_endpoint"], code,
+                                   settings.base_url + "/admin/oidc/callback",
+                                   settings.oidc_client_id, settings.oidc_client_secret,
+                                   flow["verifier"])
+            claims = oidc.verify_id_token(tokens["id_token"], oidc.jwks(settings.oidc_issuer),
+                                          settings.oidc_issuer, settings.oidc_client_id,
+                                          nonce=flow["nonce"])
+        except (oidc.OIDCError, KeyError, ValueError) as exc:
+            return render_template("message.html", title="Sign-in failed",
+                                   body="The identity provider rejected this sign-in."), 401
+        if not oidc.has_group(claims, settings.oidc_group):
+            return render_template("message.html", title="Not an operator",
+                                   body="This account is not in the operators group."), 403
+        session["admin"] = {"sub": claims.get("sub", ""),
+                            "email": claims.get("email", ""),
+                            "name": claims.get("name", "")}
+        return redirect(url_for("admin_home"))
+
+    @app.post("/admin/logout")
+    def admin_logout():
+        check_csrf()
+        session.pop("admin", None)
         return redirect(url_for("home"))
 
     # --- dashboard --------------------------------------------------------

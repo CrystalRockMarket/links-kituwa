@@ -12,6 +12,8 @@ Environment=SL_HOST=127.0.0.1
 Environment=SL_PORT=8891
 Environment=SL_COOKIE_SECURE=1
 Environment=SL_IP_MODE=full
+Environment=SL_OIDC_CLIENT_ID=84365ec8-67dd-43f9-8bb6-294d706662b4
+Environment=SL_OIDC_CLIENT_SECRET_FILE=/home/ubuntu/services/links-kituwa/oidc.secret
 ExecStart=/home/ubuntu/services/links-kituwa/.venv/bin/python run.py
 Restart=always
 RestartSec=3

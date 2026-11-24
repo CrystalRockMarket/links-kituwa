@@ -26,6 +26,10 @@ class Settings:
     ip_mode: str = "full"          # full | truncated | hashed
     session_days: int = 30
     max_body: int = 64 * 1024
+    oidc_issuer: str = "https://auth.kituwa.com"
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_group: str = "operators"
     smtp_host: str | None = None
     mail_from: str = "Secret Link <links@kituwa.com>"
     allow_signup: bool = True
@@ -52,6 +56,18 @@ def _load_secret(data_dir: Path) -> bytes:
     return key
 
 
+def _secret_file(path: str) -> str:
+    """Read the OIDC secret from a 0600 file; the value never comes from argv."""
+    if not path:
+        return ""
+    p = Path(path)
+    if not p.exists():
+        raise SystemExit(f"SL_OIDC_CLIENT_SECRET_FILE does not exist: {path}")
+    if p.stat().st_mode & 0o077:
+        raise SystemExit(f"refusing to read a world-readable secret: {path}")
+    return p.read_text().strip()
+
+
 def load_settings() -> Settings:
     data_dir = Path(os.environ.get("SL_DATA_DIR", PROJECT_ROOT / "data")).resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -68,6 +84,10 @@ def load_settings() -> Settings:
         cookie_secure=_bool("SL_COOKIE_SECURE", base_url.startswith("https://")),
         ip_mode=ip_mode,
         session_days=int(os.environ.get("SL_SESSION_DAYS", "30")),
+        oidc_issuer=os.environ.get("SL_OIDC_ISSUER", "https://auth.kituwa.com"),
+        oidc_client_id=os.environ.get("SL_OIDC_CLIENT_ID", "").strip(),
+        oidc_client_secret=_secret_file(os.environ.get("SL_OIDC_CLIENT_SECRET_FILE", "")),
+        oidc_group=os.environ.get("SL_OIDC_GROUP", "operators"),
         smtp_host=os.environ.get("SL_SMTP_HOST") or None,
         mail_from=os.environ.get("SL_MAIL_FROM", "Secret Link <links@kituwa.com>"),
         allow_signup=_bool("SL_ALLOW_SIGNUP", True),
