@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Open link{% endblock %}
+{% block body %}
+<div class="panel narrow center">
+  <h1>This link is ready</h1>
+  <p>Opening it may use up one of its remaining uses. If it was meant to be a preview, you can close this page without spending anything.</p>
+  <p><a class="cta big" href="{{ url_for('open_link', code=code) }}?go=1">Continue</a></p>
+  <p class="muted">Preview fetches are never counted.</p>
+</div>
+{% endblock %}

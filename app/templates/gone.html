@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Link closed{% endblock %}
+{% block body %}
+<div class="panel narrow center">
+  <h1>This link is closed</h1>
+  <p>{% if reason == 'expired' %}It expired.{% else %}It has been used the number of times it was allowed, so it no longer opens for anyone — including a second click from the same person.{% endif %}</p>
+  <p class="muted">If you need access, ask the sender for a new link.</p>
+</div>
+{% endblock %}

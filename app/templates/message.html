@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block body %}
+<div class="panel narrow">
+  <h1>{{ title }}</h1>
+  <p>{{ body }}</p>
+  <p class="muted"><a href="{{ url_for('home') }}">Back to Secret Link</a></p>
+</div>
+{% endblock %}

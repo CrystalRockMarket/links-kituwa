@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Continue{% endblock %}
+{% block body %}
+<div class="panel narrow center">
+  <h1>You are being tracked, not gated</h1>
+  <p>This link can be opened by anyone, any number of times. The sender sees that it was opened.</p>
+  <p><a class="cta big" href="{{ url_for('open_link', code=code) }}?go=1">Continue to the page</a></p>
+  <p><button type="button" class="ghost" data-share="{{ url_for('share_link', code=code) }}">Pass this link on, with attribution</button></p>
+  <p><input id="shareout" class="mono" readonly hidden></p>
+</div>
+{% endblock %}

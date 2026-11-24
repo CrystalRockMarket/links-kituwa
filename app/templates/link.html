@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ link['label'] or link['code'] }}{% endblock %}
+{% block body %}
+<section class="panel">
+  <div class="row">
+    <h1>{{ link['label'] or link['code'] }}</h1>
+    <span class="badge {{ state|replace(' ', '-') }}">{{ state }}</span>
+  </div>
+  <p class="short">
+    <input id="shorturl" class="mono" readonly value="{{ base_url }}/s/{{ link['code'] }}">
+    <button type="button" class="ghost" data-copy="#shorturl">Copy</button>
+  </p>
+  <p class="muted">Destination: <span class="mono">{{ link['target'] }}</span></p>
+
+  <dl class="stats">
+    <div><dt>Opens</dt><dd>{{ link['uses'] }}{% if link['max_uses'] is not none %} / {{ link['max_uses'] }}{% endif %}</dd></div>
+    <div><dt>People</dt><dd>{{ summary['visitors'] }}</dd></div>
+    <div><dt>Forwarded</dt><dd>{{ summary['shares'] }}</dd></div>
+    <div><dt>Previews (not counted)</dt><dd>{{ summary['previews'] }}</dd></div>
+  </dl>
+
+  <div class="actions">
+    {% if state != 'destroyed' %}
+    <form method="post" action="{{ url_for('link_action', link_id=link['id'], action='destroy') }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="danger" type="submit">Destroy now</button>
+    </form>
+    {% endif %}
+    {% if link['disabled_at'] %}
+    <form method="post" action="{{ url_for('link_action', link_id=link['id'], action='resume') }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button class="ghost" type="submit">Resume</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Opens</h2>
+  {% if not opens %}<p class="muted">No opens yet.</p>{% else %}
+  <table class="list">
+    <thead><tr><th>When</th><th>Kind</th><th>IP</th><th>Referrer</th><th>Via</th><th>Device</th></tr></thead>
+    <tbody>
+    {% for o in opens %}
+      <tr>
+        <td class="muted">{{ o['ts']|dt }}</td>
+        <td>{{ o['kind'] }}</td>
+        <td class="mono">{{ o['ip'] or '—' }}</td>
+        <td class="mono trunc">{{ o['referer'] or '—' }}</td>
+        <td class="mono">{{ (o['via'] or '—')[:10] }}</td>
+        <td class="mono trunc">{{ (o['ua'] or '')[:90] }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Pass-along links</h2>
+  {% if not shares %}<p class="muted">None. A recipient can create one from the link's landing page.</p>{% else %}
+  <ul class="alerts">
+    {% for s in shares %}
+      <li><span class="kind">{{ s['opens'] }} opens</span>
+        <span class="mono">{{ base_url }}/s/{{ link['code'] }}?via={{ s['token'] }}</span>
+        <time>{{ s['created_at']|dt }}</time></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endblock %}

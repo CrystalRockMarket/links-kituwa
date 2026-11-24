@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Secret Link{% endblock %}
+{% block body %}
+<section class="hero">
+  <h1>A link that knows when it has been used — and stops working when it should.</h1>
+  <p class="lede">Paste any URL. Get a short link back. Set how many times it may be opened, from once to unlimited. Keep a private log of every open, every forward and every device that received it.</p>
+  <div class="actions">
+    <a class="cta big" href="{{ url_for('signup') }}">Create an account</a>
+    <a class="ghost" href="{{ url_for('login') }}">Sign in</a>
+  </div>
+</section>
+
+<section class="grid3">
+  <article class="card">
+    <h2>One-time by default</h2>
+    <p>The first open is the only open. After that the link answers <em>410 Gone</em>, permanently. Send it to two friends and only one gets through.</p>
+  </article>
+  <article class="card">
+    <h2>Budgeted uses</h2>
+    <p>Need it for three people? Set three. The counter is incremented inside a single database transaction, so simultaneous clicks cannot exceed the budget.</p>
+  </article>
+  <article class="card">
+    <h2>You see the chain</h2>
+    <p>Every open logs time, device, referrer and IP. When a link turns up somewhere you did not send it, you get an alert instead of finding out later.</p>
+  </article>
+</section>
+
+<section class="card note">
+  <h2>What "shared" means here</h2>
+  <p>A short link is anonymous by design — we cannot know a recipient's name. We <em>can</em> see when the same link is opened by a second device, from a mail or messaging referrer, or through a pass-along link one of your recipients created with the Share button. Each of those is recorded and can raise an alert.</p>
+</section>
+{% endblock %}
