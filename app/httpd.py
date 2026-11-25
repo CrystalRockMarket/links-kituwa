@@ -224,8 +224,13 @@ def create_app(settings: Settings) -> Flask:
         if not settings.member_client_id:
             return render_template("message.html", title="Sign-in is not configured",
                                    body="Pocket ID sign-in is not wired to this service yet."), 503
-        flow = oidc.begin(settings.oidc_issuer, settings.member_client_id,
-                          settings.base_url + "/auth/pocketid/callback")
+        try:
+            flow = oidc.begin(settings.oidc_issuer, settings.member_client_id,
+                          settings.base_url + "/auth/pocketid/callback",
+                          settings.oidc_internal_base or None)
+        except Exception:
+            return render_template("message.html", title="Identity provider unreachable",
+                                   body="Pocket ID did not answer. Try again in a moment."), 503
         session["oidc_member"] = {"state": flow["state"], "nonce": flow["nonce"],
                                   "verifier": flow["verifier"],
                                   "token_endpoint": flow["token_endpoint"]}
@@ -246,7 +251,7 @@ def create_app(settings: Settings) -> Flask:
                                    settings.base_url + "/auth/pocketid/callback",
                                    settings.member_client_id, settings.member_client_secret,
                                    flow["verifier"])
-            claims = oidc.verify_id_token(tokens["id_token"], oidc.jwks(settings.oidc_issuer),
+            claims = oidc.verify_id_token(tokens["id_token"], oidc.jwks(settings.oidc_issuer, settings.oidc_internal_base or None),
                                           settings.oidc_issuer, settings.member_client_id,
                                           nonce=flow["nonce"])
         except (oidc.OIDCError, KeyError, ValueError):
@@ -322,8 +327,13 @@ def create_app(settings: Settings) -> Flask:
         if not settings.oidc_client_id:
             return render_template("message.html", title="Operator sign-in is not configured",
                                    body="No Pocket ID client is wired to this service."), 503
-        flow = oidc.begin(settings.oidc_issuer, settings.oidc_client_id,
-                          settings.base_url + "/admin/oidc/callback")
+        try:
+            flow = oidc.begin(settings.oidc_issuer, settings.oidc_client_id,
+                          settings.base_url + "/admin/oidc/callback",
+                          settings.oidc_internal_base or None)
+        except Exception:
+            return render_template("message.html", title="Identity provider unreachable",
+                                   body="Pocket ID did not answer. Try again in a moment."), 503
         session["oidc"] = {"state": flow["state"], "nonce": flow["nonce"],
                            "verifier": flow["verifier"], "token_endpoint": flow["token_endpoint"]}
         return redirect(flow["url"])
@@ -343,7 +353,7 @@ def create_app(settings: Settings) -> Flask:
                                    settings.base_url + "/admin/oidc/callback",
                                    settings.oidc_client_id, settings.oidc_client_secret,
                                    flow["verifier"])
-            claims = oidc.verify_id_token(tokens["id_token"], oidc.jwks(settings.oidc_issuer),
+            claims = oidc.verify_id_token(tokens["id_token"], oidc.jwks(settings.oidc_issuer, settings.oidc_internal_base or None),
                                           settings.oidc_issuer, settings.oidc_client_id,
                                           nonce=flow["nonce"])
         except (oidc.OIDCError, KeyError, ValueError) as exc:

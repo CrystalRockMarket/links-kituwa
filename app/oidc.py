@@ -39,16 +39,31 @@ def _get_json(url: str, timeout: int = 10) -> dict:
         return json.loads(resp.read().decode())
 
 
-def discovery(issuer: str) -> dict:
-    return _get_json(issuer.rstrip("/") + "/.well-known/openid-configuration")
+def discovery(issuer: str, internal_base: str | None = None) -> dict:
+    """Read the provider metadata.
+
+    ``internal_base`` lets the app call the identity provider on its loopback
+    address. Public DNS for the provider resolves back to this same host, where
+    nginx answers 403 to its own hairpin request, so the loopback is the honest
+    path. Token and JWKS endpoints stay internal; only the authorize endpoint is
+    rewritten to the public issuer because that one is loaded by the browser.
+    """
+    base = (internal_base or issuer).rstrip("/")
+    issuer = issuer.rstrip("/")
+    meta = _get_json(base + "/.well-known/openid-configuration")
+    if base != issuer:
+        for key in ("authorization_endpoint", "end_session_endpoint"):
+            if key in meta:
+                meta[key] = meta[key].replace(base, issuer)
+    return meta
 
 
-def jwks(issuer: str, force: bool = False) -> dict:
-    key = issuer.rstrip("/")
+def jwks(issuer: str, internal_base: str | None = None, force: bool = False) -> dict:
+    key = issuer.rstrip("/") + "|" + (internal_base or "")
     hit = _jwks_cache.get(key)
     if hit and not force and time.time() - hit[0] < _JWKS_TTL:
         return hit[1]
-    meta = discovery(key)
+    meta = discovery(issuer, internal_base)
     data = _get_json(meta["jwks_uri"])
     _jwks_cache[key] = (time.time(), data)
     return data
@@ -62,9 +77,10 @@ def _pkce() -> tuple[str, str]:
     return verifier, challenge
 
 
-def begin(issuer: str, client_id: str, redirect_uri: str) -> dict:
+def begin(issuer: str, client_id: str, redirect_uri: str,
+          internal_base: str | None = None) -> dict:
     """Return the authorize URL and the values that must survive to the callback."""
-    meta = discovery(issuer)
+    meta = discovery(issuer, internal_base)
     verifier, challenge = _pkce()
     state = secrets.token_urlsafe(24)
     nonce = secrets.token_urlsafe(24)

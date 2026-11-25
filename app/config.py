@@ -27,6 +27,7 @@ class Settings:
     session_days: int = 30
     max_body: int = 64 * 1024
     oidc_issuer: str = "https://auth.kituwa.com"
+    oidc_internal_base: str = ""
     oidc_client_id: str = ""
     oidc_client_secret: str = ""
     oidc_group: str = "operators"
@@ -88,6 +89,7 @@ def load_settings() -> Settings:
         ip_mode=ip_mode,
         session_days=int(os.environ.get("SL_SESSION_DAYS", "30")),
         oidc_issuer=os.environ.get("SL_OIDC_ISSUER", "https://auth.kituwa.com"),
+        oidc_internal_base=os.environ.get("SL_OIDC_INTERNAL_BASE", "").strip(),
         oidc_client_id=os.environ.get("SL_OIDC_CLIENT_ID", "").strip(),
         oidc_client_secret=_secret_file(os.environ.get("SL_OIDC_CLIENT_SECRET_FILE", "")),
         oidc_group=os.environ.get("SL_OIDC_GROUP", "operators"),
