@@ -36,6 +36,11 @@ class Settings:
     smtp_host: str | None = None
     mailbox_mode: str = "none"   # none | outbox | smtp
     mail_from: str = "Secret Link <links@kituwa.com>"
+    premium_api: str = "https://photos.kituwa.com"
+    premium_site: str = "links"
+    premium_token: str = ""
+    free_links: int = 25
+    premium_link_cents: int = 1
     allow_signup: bool = True
 
     def with_base(self, base_url: str) -> "Settings":
@@ -98,5 +103,10 @@ def load_settings() -> Settings:
         smtp_host=os.environ.get("SL_SMTP_HOST") or None,
         mailbox_mode=(os.environ.get("SL_SMTP_HOST") and "smtp") or os.environ.get("SL_MAILBOX_MODE", "none"),
         mail_from=os.environ.get("SL_MAIL_FROM", "Secret Link <links@kituwa.com>"),
+        premium_api=os.environ.get("SL_PREMIUM_API", "https://photos.kituwa.com").rstrip("/"),
+        premium_site=os.environ.get("SL_PREMIUM_SITE", "links"),
+        premium_token=_secret_file(os.environ.get("SL_PREMIUM_TOKEN_FILE", "")),
+        free_links=int(os.environ.get("SL_FREE_LINKS", "25")),
+        premium_link_cents=int(os.environ.get("SL_PREMIUM_LINK_CENTS", "1")),
         allow_signup=_bool("SL_ALLOW_SIGNUP", True),
     )

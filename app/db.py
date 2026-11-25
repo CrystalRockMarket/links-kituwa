@@ -121,3 +121,17 @@ def init_db(path: Path) -> None:
 
 def db_path(data_dir: Path) -> Path:
     return data_dir / "secret-link.sqlite3"
+
+# Owner decision 2026-11-25: a clicker's address is kept 90 days, then dropped.
+IP_RETENTION_DAYS = 90
+
+
+def purge_ips(conn, days: int = IP_RETENTION_DAYS) -> int:
+    """Null out addresses older than the retention window, keep the counts."""
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cur = conn.execute("UPDATE opens SET ip=NULL WHERE ip IS NOT NULL AND ts < ?", (cutoff,))
+    conn.execute("UPDATE visitors SET last_ip=NULL WHERE last_ip IS NOT NULL AND first_seen < ?", (cutoff,))
+    conn.commit()
+    return cur.rowcount

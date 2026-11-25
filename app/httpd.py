@@ -9,7 +9,7 @@ from functools import wraps
 from flask import (Flask, Response, abort, g, jsonify, redirect, render_template,
                    request, session, url_for)
 
-from . import db, mail, oidc, security, tracking
+from . import db, insight, mail, oidc, security, tracking
 from .config import Settings
 
 
@@ -26,6 +26,10 @@ def create_app(settings: Settings) -> Flask:
         SETTINGS=settings,
     )
     db.init_db(db.db_path(settings.data_dir))
+    try:
+        db.purge_ips(db.connect(db.db_path(settings.data_dir)))
+    except Exception:
+        pass
 
     # --- plumbing ---------------------------------------------------------
     def conn() -> sqlite3.Connection:
@@ -414,6 +418,31 @@ def create_app(settings: Settings) -> Flask:
             max_uses = None if raw_uses.lower() in {"", "0", "unlimited", "inf"} else int(raw_uses)
         except ValueError:
             max_uses = None
+        used = conn().execute("SELECT COUNT(*) c FROM links WHERE account_id=?",
+                              (g.account["id"],)).fetchone()["c"]
+        charge_cents = settings.premium_link_cents if used >= settings.free_links else 0
+        if charge_cents:
+            reference = f"link:{uuid4().hex}"
+            try:
+                ok, result = premium_api.charge(
+                    settings.premium_api, settings.premium_token, settings.premium_site,
+                    g.account["email"], charge_cents, reference, memo="tracked short link",
+                )
+            except premium_api.PremiumError:
+                ok, result = False, {"error": "premium unavailable"}
+            if not ok:
+                short = result.get("error") == "insufficient balance"
+                return render_template(
+                    "app.html",
+                    links=conn().execute(
+                        "SELECT l.*, (SELECT COUNT(*) FROM visitors v WHERE v.link_id=l.id) visitors "
+                        "FROM links l WHERE l.account_id=? ORDER BY l.id DESC", (g.account["id"],)
+                    ).fetchall(), alerts=[],
+                    error=("Your KituwaCoin balance is too low for another link. "
+                           "Add coins at https://photos.kituwa.com/wallet."
+                           if short else
+                           "Premium charging is unavailable right now; no charge was made."),
+                ), 402
         try:
             link = tracking.create_link(
                 conn(), g.account["id"],
@@ -452,6 +481,37 @@ def create_app(settings: Settings) -> Flask:
         ).fetchall()
         return render_template("link.html", link=link, summary=summary,
                                opens=opens, shares=shares, state=tracking.state_of(link))
+
+    @app.get("/app/link/<int:link_id>/clicks.json")
+    @login_required
+    def link_clicks(link_id: int):
+        """Owner-only per-click detail: address, place, device, referrer."""
+        link = owned_link(link_id)
+        rows = conn().execute(
+            "SELECT o.id, o.ts, o.ip, o.ua, o.referer, o.via, o.kind "
+            "FROM opens o WHERE o.link_id=? ORDER BY o.id DESC LIMIT 500",
+            (link_id,),
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = insight.describe(r["ip"], r["ua"])
+            out.append({
+                "ts": r["ts"], "kind": r["kind"], "via": r["via"],
+                "referer": r["referer"], **d,
+            })
+        ips = {r["ip"] for r in rows if r["ip"]}
+        return jsonify({
+            "link": {"id": link["id"], "code": link["code"], "label": link["label"],
+                     "target": link["target"], "uses": link["uses"]},
+            "summary": {
+                "opens": len(rows),
+                "unique_ips": len(ips),
+                "previews": sum(1 for r in rows if r["kind"] == "preview"),
+                "first": rows[-1]["ts"] if rows else None,
+                "last": rows[0]["ts"] if rows else None,
+            },
+            "rows": out,
+        })
 
     @app.post("/app/link/<int:link_id>/<action>")
     @login_required
@@ -502,14 +562,13 @@ def create_app(settings: Settings) -> Flask:
             conn(), code,
             ip=ip, ua=ua, referer=request.headers.get("Referer", ""),
             lang=lang, via=(request.args.get("via") or "")[:64],
-            preview=preview, skip_increment=(request.args.get("go") == "1"),
+            preview=preview, skip_increment=False,
             secret=settings.secret, ip_mode=settings.ip_mode,
         )
         resp: Response
-        if result.state == "ok" and result.interstitial:
-            resp = Response(render_template("tracked.html", code=code, target=result.target),
-                            mimetype="text/html")
-        elif result.state == "ok":
+        if result.state == "ok":
+            # No interstitial: the visitor is never told they are tracked and
+            # every open still counts. Owner decision 2026-11-25.
             resp = redirect(result.target, code=302)
         elif result.state == "preview":
             resp = Response(render_template("preview.html", code=code), mimetype="text/html")

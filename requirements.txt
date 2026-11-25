@@ -10,3 +10,6 @@ waitress==3.0.2
 argon2-cffi==25.1.0
 pytest==9.0.3
 cryptography==50.0.2
+
+# Geo database for the owner Details panel (DB-IP Lite, updated monthly by cron).
+maxminddb==3.0.0

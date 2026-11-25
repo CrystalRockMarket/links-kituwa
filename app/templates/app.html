@@ -1,5 +1,71 @@
 {% extends "base.html" %}
-{% block title %}Your links{% endblock %}
+{% block title %}Your links
+<div id="clicksheet" class="sheet" hidden>
+  <div class="sheet-head">
+    <div>
+      <strong id="cl-title">Clicks</strong>
+      <div class="muted small" id="cl-sub"></div>
+    </div>
+    <button type="button" class="ghost small" id="cl-close">Close</button>
+  </div>
+  <div id="cl-summary" class="cl-summary"></div>
+  <div class="sheet-body"><table class="list small" id="cl-table"><tbody></tbody></table></div>
+</div>
+<style>
+.sheet{position:fixed;inset:0 0 0 auto;width:min(760px,96vw);background:#fff;border-left:1px solid #dcdcd4;
+  box-shadow:-18px 0 40px rgba(0,0,0,.12);z-index:60;display:flex;flex-direction:column}
+.sheet[hidden]{display:none}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 18px;border-bottom:1px solid #eceae2}
+.sheet-body{overflow:auto;padding:0 18px 24px}
+.cl-summary{display:flex;gap:18px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid #f0eee6;font:13px system-ui;color:#555}
+.cl-summary b{color:#111}
+#cl-table td{vertical-align:top;padding:7px 10px;border-bottom:1px solid #f2f0e8}
+.ipc{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.tag{display:inline-block;padding:1px 7px;border-radius:99px;background:#eef2ef;color:#2f6f5e;font:600 11px system-ui}
+.tag.bot{background:#f6ecec;color:#a13b3b}
+@media(max-width:560px){.sheet{width:100vw}}
+</style>
+<script>
+(() => {
+  const sheet = document.getElementById('clicksheet');
+  const tbody = document.querySelector('#cl-table tbody');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const where = r => [r.city, r.region, r.country].filter(Boolean).join(', ') || '—';
+  const when = ts => ts ? ts.replace('T', ' ').replace('Z', ' UTC') : '—';
+
+  async function open(id) {
+    tbody.innerHTML = '<tr><td class="muted">Loading…</td></tr>';
+    sheet.hidden = false;
+    const res = await fetch(`/app/link/${id}/clicks.json`, {credentials: 'same-origin'});
+    if (!res.ok) { tbody.innerHTML = '<tr><td class="muted">Not available.</td></tr>'; return; }
+    const d = await res.json();
+    document.getElementById('cl-title').textContent = d.link.label || ('/' + d.link.code);
+    document.getElementById('cl-sub').textContent = d.link.target;
+    document.getElementById('cl-summary').innerHTML =
+      `<span><b>${d.summary.opens}</b> opens</span>
+       <span><b>${d.summary.unique_ips}</b> unique addresses</span>
+       <span><b>${d.summary.previews}</b> previews</span>
+       <span>first <b>${esc(when(d.summary.first))}</b></span>
+       <span>last <b>${esc(when(d.summary.last))}</b></span>`;
+    tbody.innerHTML = d.rows.map(r => `
+      <tr>
+        <td class="muted small">${esc(when(r.ts))}</td>
+        <td class="ipc">${esc(r.ip || '—')}</td>
+        <td>${esc(where(r))}</td>
+        <td>${r.bot ? `<span class="tag bot">${esc(r.bot)}</span>` : `${esc(r.browser || '')} <span class="muted small">${esc(r.os || '')} · ${esc(r.device || '')}</span>`}</td>
+        <td class="muted small">${esc(r.referer || r.via || '—')}</td>
+      </tr>`).join('') || '<tr><td class="muted">No opens recorded.</td></tr>';
+  }
+
+  document.addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-details]');
+    if (btn) { ev.preventDefault(); open(btn.dataset.details); }
+    if (ev.target.closest('#cl-close')) { sheet.hidden = true; }
+  });
+  addEventListener('keydown', ev => { if (ev.key === 'Escape' && !sheet.hidden) sheet.hidden = true; });
+})();
+</script>
+{% endblock %}
 {% block body %}
 <section class="panel">
   <h1>Your links</h1>
@@ -28,6 +94,7 @@
       </select>
     </label>
     <button class="cta" type="submit">Create link</button>
+    <p class="hint">The first 25 links are free. After that each new link costs <strong>1¢</strong> from your KituwaCoin balance; the price is shown before the link is created. <a href="https://photos.kituwa.com/wallet">Your balance</a> · <a href="https://photos.kituwa.com/premium">Premium</a></p>
   </form>
 </section>
 
@@ -52,7 +119,7 @@
     <p class="muted">Nothing yet. The form above makes your first one.</p>
   {% else %}
   <table class="list">
-    <thead><tr><th>Label</th><th>Short link</th><th>Uses</th><th>People</th><th>Created</th></tr></thead>
+    <thead><tr><th>Label</th><th>Short link</th><th>Uses</th><th>People</th><th>Created</th><th></th></tr></thead>
     <tbody>
     {% for l in links %}
       <tr>
@@ -61,6 +128,7 @@
         <td>{{ l['uses'] }}{% if l['max_uses'] is not none %} / {{ l['max_uses'] }}{% else %} / ∞{% endif %}</td>
         <td>{{ l['visitors'] }}</td>
         <td class="muted">{{ l['created_at']|dt }}</td>
+        <td><button type="button" class="ghost small" data-details="{{ l['id'] }}">Details</button></td>
       </tr>
     {% endfor %}
     </tbody>

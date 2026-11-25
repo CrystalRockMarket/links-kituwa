@@ -76,7 +76,7 @@ def test_preview_request_does_not_burn_one_time_link(client, conn):
     assert conn.execute("SELECT uses FROM links WHERE code=?", (code,)).fetchone()["uses"] == 1
 
 
-def test_track_mode_interstitial_does_not_double_count(client, conn):
+def test_track_mode_redirects_without_interstitial(client, conn):
     make_account(conn)
     signin(client)
     page = client.get("/app").get_data(as_text=True)
@@ -85,11 +85,14 @@ def test_track_mode_interstitial_does_not_double_count(client, conn):
     row = conn.execute("SELECT * FROM links").fetchone()
     assert row["max_uses"] is None and row["mode"] == "track"
 
+    # No interstitial any more: the first visit redirects straight through and
+    # counts exactly once (owner decision 2026-11-25).
     first = client.get(f"/{row['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
-    assert first.status_code == 200 and "Pass this link on" in first.get_data(as_text=True)
-    second = client.get(f"/{row['code']}?go=1", headers={"User-Agent": "Mozilla/5.0 person"})
+    assert first.status_code == 302
+    assert "tracked" not in first.get_data(as_text=True).lower()
+    second = client.get(f"/{row['code']}", headers={"User-Agent": "Mozilla/5.0 person"})
     assert second.status_code == 302
-    assert conn.execute("SELECT uses FROM links WHERE id=?", (row["id"],)).fetchone()["uses"] == 1
+    assert conn.execute("SELECT uses FROM links WHERE id=?", (row["id"],)).fetchone()["uses"] == 2
 
 
 def test_link_isolation_between_accounts(client, conn):
@@ -167,3 +170,39 @@ def test_email_signup_is_closed_when_no_mail_transport(tmp_path):
     client = app.test_client()
     r = client.get("/signup")
     assert r.status_code == 503 and "Pocket ID" in r.get_data(as_text=True)
+
+
+def test_click_details_are_owner_only(client, conn):
+    make_account(conn)
+    signin(client)
+    page = client.get("/app").get_data(as_text=True)
+    client.post("/app/new", data={"csrf": csrf(page), "target": "https://example.com/d",
+                                  "max_uses": "0"})
+    link = conn.execute("SELECT * FROM links").fetchone()
+    client.get(f"/{link['code']}", headers={"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari"})
+
+    body = client.get(f"/app/link/{link['id']}/clicks.json").get_json()
+    assert body["summary"]["opens"] == 1
+    row = body["rows"][0]
+    assert row["device"] == "phone" and row["os"] == "iOS"
+    assert "ip" in row
+
+    # the endpoint is private: a fresh client has no session
+    with client.application.test_client() as anon:
+        assert anon.get(f"/app/link/{link['id']}/clicks.json").status_code in (302, 401)
+
+
+def test_old_addresses_are_purged(conn):
+    from app import db
+
+    make_account(conn)
+    conn.execute("INSERT INTO links (account_id, code, target, created_at) VALUES (1,'purge1','https://x', '2026-01-01T00:00:00Z')")
+    link_id = conn.execute("SELECT id FROM links WHERE code='purge1'").fetchone()["id"]
+    conn.execute("INSERT INTO opens (link_id, ts, ip, ua, kind) VALUES (?,?,?,?, 'open')",
+                 (link_id, "2020-01-01T00:00:00Z", "203.0.113.9", "Mozilla/5.0"))
+    conn.execute("INSERT INTO opens (link_id, ts, ip, ua, kind) VALUES (?,?,?,?, 'open')",
+                 (link_id, "2099-01-01T00:00:00Z", "203.0.113.10", "Mozilla/5.0"))
+    conn.commit()
+    db.purge_ips(conn)
+    left = [r["ip"] for r in conn.execute("SELECT ip FROM opens WHERE link_id=? ORDER BY id", (link_id,))]
+    assert left == [None, "203.0.113.10"]
