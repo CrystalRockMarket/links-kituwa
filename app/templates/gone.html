@@ -1,9 +1,15 @@
-{% extends "base.html" %}
+{% extends "recipient_base.html" %}
 {% block title %}Link closed{% endblock %}
 {% block body %}
-<div class="panel narrow center">
-  <h1>This link is closed</h1>
-  <p>{% if reason == 'expired' %}It expired.{% else %}It has been used the number of times it was allowed, so it no longer opens for anyone — including a second click from the same person.{% endif %}</p>
-  <p class="muted">If you need access, ask the sender for a new link.</p>
-</div>
+<div class="glyph" aria-hidden="true">⛔</div>
+<h1>This link is closed</h1>
+<p class="muted">
+  {% if reason == 'expired' %}
+    It reached its expiry date and no longer opens.
+  {% else %}
+    It has been opened the number of times it was allowed, so it no longer works for anyone — including a second click from the same person.
+  {% endif %}
+</p>
+<p class="hint" style="margin-top:1rem">If you need access, ask the sender for a new link.</p>
+<p class="hint">Short links by <a href="https://links.kituwa.com/">links.kituwa.com</a></p>
 {% endblock %}

@@ -1,0 +1,401 @@
+/* Kituwa Network bar. Loaded as a same-origin stylesheet inside the shadow
+   root so strict style-src policies need no exception.
+
+   The panel chrome is fixed: the dialog has one height from the first frame,
+   the header never scrolls, and only .results changes underneath. */
+:host {
+  display: block;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 max(4vw, 12px);
+  min-height: 40px;
+  background: Canvas;
+  background: color-mix(in srgb, var(--kn-color, #476952) 13%, Canvas);
+  color: CanvasText;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+}
+strong { font-weight: 650; }
+.mark {
+  color: var(--kn-color, #476952);
+  font-size: 19px;
+  margin-right: 6px;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.open, .close { background: transparent; border: 0; min-height: 40px; }
+.open { color: var(--kn-color, #476952); font-weight: 650; }
+dialog {
+  color: CanvasText;
+  max-width: 100vw;
+  background: Canvas;
+  padding: 0;
+  width: min(780px, 94vw);
+  height: min(720px, 85vh);
+  height: min(720px, 85dvh);
+  max-height: 85dvh;
+  border: 1px solid GrayText;
+  border-radius: 16px;
+  box-shadow: 0 20px 80px #0004;
+  overflow: hidden;
+}
+dialog[open] { display: flex; flex-direction: column; }
+dialog::backdrop { background: #101e1780; }
+.head {
+  position: relative;
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
+  padding: 16px 22px 0;
+}
+.top { min-height: 20px; }
+.head b { font-weight: 650; }
+.close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  font-size: 24px;
+  line-height: 1;
+  border-radius: 50%;
+}
+.close:hover, .close:focus-visible {
+  background: color-mix(in srgb, CanvasText 8%, Canvas);
+}
+h2 {
+  font: 36px/1.1 Georgia, serif;
+  margin: 4px 52px 14px 0;
+  padding: 0;
+}
+.field { display: block; margin: 0; }
+input {
+  width: 100%;
+  height: 42px;
+  padding: 8px 10px;
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  background: Canvas;
+}
+.filters {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  margin: 0;
+  padding: 0 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.filters::-webkit-scrollbar { display: none; }
+.filters button {
+  flex: none;
+  border: 1px solid GrayText;
+  border-radius: 20px;
+  background: Canvas;
+  padding: 6px 12px;
+  height: 32px;
+  white-space: nowrap;
+}
+.filters [aria-pressed="true"] { background: CanvasText; color: Canvas; }
+.results {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 22px 16px;
+}
+h3 {
+  font: 600 12px/1.4 ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: .11em;
+  margin: 18px 0 6px;
+  color: color-mix(in srgb, CanvasText 65%, Canvas);
+}
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; }
+.heat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 2px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, CanvasText 16%, Canvas);
+  border-radius: 10px;
+}
+.heat-word {
+  color: CanvasText;
+  text-decoration: none;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.heat-word:hover, .heat-word:focus-visible { text-decoration: underline; }
+.card {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 15%, Canvas);
+}
+.card-link {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  padding: 12px 4px;
+}
+.card-link:hover strong, .card-link:focus-visible strong { text-decoration: underline; }
+.tile {
+  flex: none;
+  background: color-mix(in srgb, var(--kn-color, #476952) 18%, Canvas);
+  color: CanvasText;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  font: bold 20px Georgia, serif;
+}
+.badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  font: 600 10px/1.5 ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  vertical-align: 1px;
+}
+small { display: block; color: color-mix(in srgb, CanvasText 75%, Canvas); }
+.pin-slot {
+  flex: none;
+  width: 38px;
+  display: grid;
+  place-items: center;
+}
+.pin {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  opacity: .3;
+  filter: grayscale(1);
+}
+.pin[aria-pressed="true"] { opacity: 1; filter: none; }
+.pin:hover, .pin:focus-visible {
+  opacity: 1;
+  filter: none;
+  background: color-mix(in srgb, var(--kn-color, #476952) 16%, Canvas);
+  border-color: color-mix(in srgb, CanvasText 25%, Canvas);
+}
+.pin:disabled { cursor: wait; opacity: .5; }
+footer {
+  flex: none;
+  padding: 12px 22px;
+  border-top: 1px solid color-mix(in srgb, CanvasText 15%, Canvas);
+}
+footer a { color: inherit; }
+.empty { margin: 18px 0 10px; }
+.retry {
+  margin-right: 12px;
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  background: Canvas;
+  padding: 8px 14px;
+}
+.fallback { color: inherit; }
+@media (max-width: 620px) {
+  dialog {
+    width: 100%;
+    max-width: 100%;
+    height: 88vh;
+    height: 88dvh;
+    max-height: 88dvh;
+    margin: auto 0 0;
+    border-radius: 16px 16px 0 0;
+  }
+  .grid { grid-template-columns: 1fr; }
+  dialog { width: 100vw; max-width: 100vw; }
+  input { font-size: 16px; }
+  .head { padding: 14px 18px 0; }
+  .results { padding-left: 18px; padding-right: 18px; }
+  footer { padding-left: 18px; padding-right: 18px; }
+  h2 { font-size: 30px; margin-bottom: 12px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  dialog[open] { transition: opacity .12s ease-out; }
+}
+
+/* Sponsored placement: clearly labelled, never mixed with Featured. */
+.sponsor-label {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  font: 600 9px/1.5 ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  vertical-align: 1px;
+  color: var(--kn-color, #476952);
+}
+.sponsor-cta {
+  display: inline-block;
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--kn-color, #476952);
+  text-underline-offset: 2px;
+}
+.sponsor-cta:hover, .sponsor-cta:focus-visible { text-decoration: underline; }
+
+.tile img { width: 28px; height: 28px; object-fit: contain; display: block; }
+
+.sponsor-pay {
+  display: inline-block;
+  margin: 0 0 10px 4px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--kn-color, #476952);
+  text-underline-offset: 2px;
+}
+.sponsor-pay:hover, .sponsor-pay:focus-visible { text-decoration: underline; }
+
+.alerts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 2px;
+}
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+  border-left: 3px solid var(--kn-color, #476952);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--kn-color, #476952) 7%, Canvas);
+  color: inherit;
+  text-decoration: none;
+}
+.alert:hover, .alert:focus-visible { background: color-mix(in srgb, var(--kn-color, #476952) 13%, Canvas); }
+.alert svg { width: 20px; height: 20px; flex: none; margin-top: 1px; color: var(--kn-color, #476952); }
+.alert strong { display: block; font-size: 12px; line-height: 1.35; }
+.alert small { display: block; font-size: 11px; line-height: 1.4; color: color-mix(in srgb, CanvasText 72%, Canvas); }
+.alert-premium { border-left-color: #b7791f; }
+.alert-premium svg { color: #b7791f; }
+@media (max-width: 620px) {
+  .alerts { grid-template-columns: 1fr; gap: 6px; }
+  .alert { padding: 7px 9px; }
+  .alert small { font-size: 10.5px; }
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.account .who { color: color-mix(in srgb, CanvasText 65%, Canvas); }
+.account a { color: var(--kn-color, #476952); font-weight: 650; text-decoration: none; }
+.account a:hover, .account a:focus-visible { text-decoration: underline; }
+.account .signin {
+  border: 1px solid var(--kn-color, #476952);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+.account .op { color: color-mix(in srgb, CanvasText 60%, Canvas); font-weight: 500; }
+.hotlinks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+}
+.hotlinks a {
+  border: 1px solid color-mix(in srgb, CanvasText 22%, Canvas);
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 650;
+  color: inherit;
+  text-decoration: none;
+}
+.hotlinks a:hover, .hotlinks a:focus-visible {
+  border-color: var(--kn-color, #476952);
+  color: var(--kn-color, #476952);
+}
+.hotlinks .edit { border-style: dashed; font-weight: 500; }
+
+/* Admin is a tab inside the panel, never a page-level strip. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 0;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 15%, Canvas);
+}
+.tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 6px 10px;
+  font: 600 13px/1.3 system-ui, sans-serif;
+  color: color-mix(in srgb, CanvasText 65%, Canvas);
+  cursor: pointer;
+}
+.tab.is-active {
+  color: CanvasText;
+  border-bottom-color: var(--kn-color, #476952);
+}
+.tab[hidden] { display: none; }
+.admin-note {
+  margin: 16px 0 10px;
+  color: color-mix(in srgb, CanvasText 70%, Canvas);
+  font-size: 12.5px;
+}
+.admin-apps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.admin-app {
+  display: block;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+  border-radius: 10px;
+  background: Canvas;
+  color: inherit;
+  text-decoration: none;
+}
+.admin-app strong { display: block; font-size: 14px; }
+.admin-app small { display: block; color: color-mix(in srgb, CanvasText 65%, Canvas); font-size: 12px; }
+.admin-app:hover, .admin-app:focus-visible { border-color: var(--kn-color, #476952); }
+.admin-manage {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--kn-color, #476952);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+@media (max-width: 620px) {
+  .admin-apps { grid-template-columns: 1fr; }
+}
+
+.field[hidden], .filters[hidden] { display: none; }

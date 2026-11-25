@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Links{% endblock %} · links.kituwa.com</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#4f46e5">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<kituwa-network data-site="site-links-kituwa">
+  <a href="https://hub.kituwa.com/network/">Kituwa Network · Our other sites</a>
+</kituwa-network>
+<script type="module" src="{{ url_for('static', filename='kituwa-network/v4/network.js') }}"></script>
+
+<main class="recipient">
+  <div class="card recipient-card">
+    {% block body %}{% endblock %}
+  </div>
+</main>
+</body>
+</html>

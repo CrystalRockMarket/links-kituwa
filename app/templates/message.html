@@ -1,9 +1,8 @@
-{% extends "base.html" %}
+{% extends "recipient_base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block body %}
-<div class="panel narrow">
-  <h1>{{ title }}</h1>
-  <p>{{ body }}</p>
-  <p class="muted"><a href="{{ url_for('home') }}">Back to Secret Link</a></p>
-</div>
+<div class="glyph" aria-hidden="true">·</div>
+<h1>{{ title }}</h1>
+<p class="muted">{{ body }}</p>
+<p class="hint" style="margin-top:1rem"><a href="{{ url_for('home') }}">links.kituwa.com</a></p>
 {% endblock %}

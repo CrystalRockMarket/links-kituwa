@@ -2,35 +2,93 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Links{% endblock %} · kituwa.com</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}Links{% endblock %} · links.kituwa.com</title>
+<meta name="description" content="Short links that stop working when they should: one-time or budgeted opens, with a private log of every open, device and forward.">
+<meta name="robots" content="{% block robots %}noindex,nofollow{% endblock %}">
+<meta name="theme-color" content="#4f46e5">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head %}{% endblock %}
 </head>
 <body>
-<header class="bar">
-  <a class="brand" href="{{ url_for('home') }}">links<span>.kituwa</span></a>
-  <nav>
-    {% if g.account %}
-      <a href="{{ url_for('app_home') }}">Links</a>
-      <a href="{{ url_for('settings_page') }}">Settings</a>
-      <form method="post" action="{{ url_for('logout') }}" class="inline">
-        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-        <button class="linkish" type="submit">Sign out</button>
-      </form>
-    {% else %}
-      <a href="{{ url_for('login') }}">Sign in</a>
-      <a class="cta" href="{{ url_for('signup') }}">Create account</a>
-    {% endif %}
-  </nav>
-</header>
-<main>
-{% block body %}{% endblock %}
-</main>
-<footer class="foot">
-  <span>links.kituwa.com</span>
-  <span>Short links that expire by use.</span>
-  <a href="https://photos.kituwa.com/premium">Premium — 1¢ per tracked link, or $3/month for 500 links and analytics</a>
-</footer>
+<kituwa-network data-site="site-links-kituwa">
+  <a href="https://hub.kituwa.com/network/">Kituwa Network · Our other sites</a>
+</kituwa-network>
+<script type="module" src="{{ url_for('static', filename='kituwa-network/v4/network.js') }}"></script>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{{ url_for('home') }}">
+      <span class="brand-mark" aria-hidden="true">↗</span>
+      <span class="brand-text">links<em>.kituwa</em></span>
+    </a>
+
+    <nav class="side-nav" aria-label="Main">
+      <p class="side-label">Workspace</p>
+      <a class="side-link {% if active == 'links' %}is-active{% endif %}" href="{{ url_for('app_home') }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4.93l1.41 1.41 1.83-1.83a3 3 0 1 1 4.24 4.24L15.66 11.6a3 3 0 0 1-4.24 0L10 13Zm4-2a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 19.07l-1.41-1.41-1.83 1.83a3 3 0 1 1-4.24-4.24L8.34 12.4a3 3 0 0 1 4.24 0L14 11Z"/></svg>
+        My links
+      </a>
+      <a class="side-link" href="{{ url_for('app_home') }}#create">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>
+        New link
+      </a>
+      <a class="side-link {% if active == 'settings' %}is-active{% endif %}" href="{{ url_for('settings_page') }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8.94 5.06-1.8.72a7.2 7.2 0 0 1-.6 1.44l.86 1.74-1.98 1.98-1.74-.86a7.2 7.2 0 0 1-1.44.6l-.72 1.8h-2.8l-.72-1.8a7.2 7.2 0 0 1-1.44-.6l-1.74.86-1.98-1.98.86-1.74a7.2 7.2 0 0 1-.6-1.44l-1.8-.72v-2.8l1.8-.72a7.2 7.2 0 0 1 .6-1.44l-.86-1.74 1.98-1.98 1.74.86a7.2 7.2 0 0 1 1.44-.6l.72-1.8h2.8l.72 1.8a7.2 7.2 0 0 1 1.44.6l1.74-.86 1.98 1.98-.86 1.74a7.2 7.2 0 0 1 .6 1.44l1.8.72v2.8Z"/></svg>
+        Settings
+      </a>
+      {% if session.get('admin') %}
+      <p class="side-label">Operators</p>
+      <a class="side-link {% if active == 'admin' %}is-active{% endif %}" href="{{ url_for('admin_home') }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 9.3 8 10 4.6-.7 8-5 8-10V6l-8-4Zm0 4.5 4 2V12c0 3.2-1.8 6-4 6.7C9.8 18 8 15.2 8 12V8.5l4-2Z"/></svg>
+        Console
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="side-foot">
+      {% if g.account %}
+        <p class="trunc" title="{{ g.account['email'] }}">{{ g.account['email'] }}</p>
+        <form method="post" action="{{ url_for('logout') }}" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-sm" type="submit">Sign out</button>
+        </form>
+      {% else %}
+        <p><a href="{{ url_for('login') }}">Sign in</a> · <a href="{{ url_for('signup') }}">Create account</a></p>
+      {% endif %}
+      <p><a href="https://hub.kituwa.com/watchdog/estate-service-links-kituwa">Watchdog</a> · <a href="{{ url_for('healthz') }}">Status</a></p>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-btn" type="button" id="menu-btn" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z"/></svg>
+      </button>
+      <div class="crumbs">
+        <span>{% block section %}Links{% endblock %}</span><span class="sep">/</span><b>{% block crumb %}{% endblock %}</b>
+      </div>
+      <div class="top-actions">
+        {% block actions %}{% endblock %}
+        {% if not g.account and request.endpoint not in ('login','signup') %}
+          <a class="btn btn-sm" href="{{ url_for('login') }}">Sign in</a>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('signup') }}">Create account</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="content" id="main">
+      {% block body %}{% endblock %}
+      <footer class="foot">
+        <span>links.kituwa.com — short links that expire by use</span>
+        <span><a href="https://hub.kituwa.com/network/">Kituwa Network</a> · <a href="https://hub.kituwa.com/watchdog/estate-service-links-kituwa">Watchdog</a> · <a href="{{ url_for('healthz') }}">Status</a></span>
+      </footer>
+    </main>
+  </div>
+</div>
 <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>

@@ -1,33 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Secret Link{% endblock %}
+{% block title %}Short links that expire by use{% endblock %}
+{% block robots %}index,follow{% endblock %}
+{% block section %}Home{% endblock %}
+{% block crumb %}Overview{% endblock %}
 {% block body %}
 <section class="hero">
-  <h1>A link that knows when it has been used — and stops working when it should.</h1>
-  <p class="lede">Paste any URL. Get a short link back. Set how many times it may be opened, from once to unlimited. Keep a private log of every open, every forward and every device that received it.</p>
-  <div class="actions">
-    <a class="cta big" href="{{ url_for('member_login') }}">Sign in with Pocket ID</a>
-    <a class="ghost" href="{{ url_for('signup') }}">Create an account</a>
-    <a class="ghost" href="{{ url_for('login') }}">Sign in</a>
+  <div>
+    <p class="kicker">links.kituwa.com</p>
+    <h1>A link that knows when it has been used — and stops working when it should.</h1>
+    <p class="lede">Paste any URL and get a short link back. Set how many times it may be opened, from once to unlimited. Keep a private record of every open, every device and every forward.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('member_login') }}">Continue with Pocket ID</a>
+      <a class="btn" href="{{ url_for('signup') }}">Create an account</a>
+    </div>
+    <p class="hint" style="margin-top:.7rem">Passkey sign-in — fingerprint, face, device PIN or security key.</p>
+  </div>
+
+  <div class="hero-demo" aria-hidden="true">
+    <div class="line"><span class="chip chip-accent">1 use</span> <span class="mono muted">links.kituwa.com/7k3m9qpd</span></div>
+    <div class="line"><span class="chip chip-good">opened once</span> <span class="muted">302 → destination</span></div>
+    <div class="line"><span class="chip chip-bad">closed</span> <span class="muted">410 Gone, permanently</span></div>
+    <div class="line"><span class="chip">2 people</span> <span class="muted">logged with time, IP and referrer</span></div>
   </div>
 </section>
 
-<section class="grid3">
-  <article class="card">
+<section class="feature-grid">
+  <article class="card feature">
+    <div class="ico" aria-hidden="true">①</div>
     <h2>One-time by default</h2>
-    <p>The first open is the only open. After that the link answers <em>410 Gone</em>, permanently. Send it to two friends and only one gets through.</p>
+    <p>The first open is the only open. After that the link answers 410 Gone, permanently — including for a second click from the same person.</p>
   </article>
-  <article class="card">
+  <article class="card feature">
+    <div class="ico" aria-hidden="true">③</div>
     <h2>Budgeted uses</h2>
-    <p>Need it for three people? Set three. The counter is incremented inside a single database transaction, so simultaneous clicks cannot exceed the budget.</p>
+    <p>Send it to three people and allow three opens. The counter is incremented in one database transaction, so simultaneous clicks cannot exceed the budget.</p>
   </article>
-  <article class="card">
+  <article class="card feature">
+    <div class="ico" aria-hidden="true">↗</div>
     <h2>You see the chain</h2>
     <p>Every open logs time, device, referrer and IP. When a link turns up somewhere you did not send it, you get an alert instead of finding out later.</p>
   </article>
 </section>
 
-<section class="card note">
-  <h2>What "shared" means here</h2>
-  <p>A short link is anonymous by design — we cannot know a recipient's name. We <em>can</em> see when the same link is opened by a second device, from a mail or messaging referrer, or through a pass-along link one of your recipients created with the Share button. Each of those is recorded and can raise an alert.</p>
+<section class="card card-pad">
+  <h2>What “shared” means here</h2>
+  <p class="muted" style="margin-top:.4rem">A short link is anonymous by design — a recipient has no name until they identify themselves. We record three honest signals instead of inventing one: a second device opening the same link, a referrer from a mail or messaging host, and a pass-along link a recipient creates with the Share button. Each of those is recorded and can raise an alert.</p>
 </section>
 {% endblock %}
