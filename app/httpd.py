@@ -66,7 +66,9 @@ def create_app(settings: Settings) -> Flask:
         resp.headers.setdefault("X-Frame-Options", "DENY")
         resp.headers.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
+            "default-src 'self'; img-src 'self' data: https://hub.kituwa.com; "
+            "style-src 'self'; script-src 'self'; "
+            "connect-src 'self' https://hub.kituwa.com https://admin.kituwa.com; "
             "form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
         )
         return resp
