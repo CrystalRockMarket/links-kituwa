@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Secret Link{% endblock %} · Kituwa</title>
+<title>{% block title %}Links{% endblock %} · kituwa.com</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <header class="bar">
-  <a class="brand" href="{{ url_for('home') }}">secret<span>link</span></a>
+  <a class="brand" href="{{ url_for('home') }}">links<span>.kituwa</span></a>
   <nav>
     {% if g.account %}
       <a href="{{ url_for('app_home') }}">Links</a>
@@ -27,8 +27,8 @@
 {% block body %}{% endblock %}
 </main>
 <footer class="foot">
-  <span>Secret Link · kituwa.com</span>
-  <span>One-time links by default. Tracking is opt-in per link.</span>
+  <span>links.kituwa.com</span>
+  <span>Short links that expire by use.</span>
 </footer>
 <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
