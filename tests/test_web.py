@@ -158,3 +158,12 @@ def test_share_endpoint_mints_attributed_link(client, conn):
     client.get(f"/{code}?via={via}", headers={"User-Agent": "Mozilla/5.0 receiver"})
     assert conn.execute("SELECT opens FROM share_tokens").fetchone()["opens"] == 1
     assert conn.execute("SELECT COUNT(*) c FROM alerts WHERE kind='shared'").fetchone()["c"] >= 1
+
+
+def test_email_signup_is_closed_when_no_mail_transport(tmp_path):
+    from app.config import Settings
+    from app.httpd import create_app
+    app = create_app(Settings(data_dir=tmp_path, secret=b"s", base_url="https://links.kituwa.com"))
+    client = app.test_client()
+    r = client.get("/signup")
+    assert r.status_code == 503 and "Pocket ID" in r.get_data(as_text=True)

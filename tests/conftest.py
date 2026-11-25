@@ -21,6 +21,7 @@ def settings(tmp_path):
         secret=b"test-secret-key-not-for-production",
         base_url="http://127.0.0.1:8848",
         cookie_secure=False,
+        mailbox_mode="outbox",
     )
 
 

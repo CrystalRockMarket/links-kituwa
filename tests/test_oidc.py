@@ -113,3 +113,49 @@ def test_admin_login_redirects_to_the_provider(tmp_path, monkeypatch):
 
 def test_callback_without_flow_is_rejected(client):
     assert client.get("/admin/oidc/callback?code=x&state=y").status_code == 400
+
+
+def _member_app(tmp_path, monkeypatch, email="owner@kituwa.com"):
+    from app.config import Settings
+    from app.httpd import create_app
+    settings = Settings(data_dir=tmp_path, secret=b"test-secret",
+                        base_url="https://links.kituwa.com",
+                        member_client_id="member-1", member_client_secret="s3cret")
+    app = create_app(settings)
+    monkeypatch.setattr("app.oidc.begin", lambda *a, **k: {
+        "url": "https://auth.kituwa.com/authorize?client_id=member-1&state=s1",
+        "state": "s1", "nonce": "n1", "verifier": "v1",
+        "token_endpoint": "https://auth.kituwa.com/api/oidc/token"})
+    monkeypatch.setattr("app.oidc.exchange", lambda *a, **k: {"id_token": "t"})
+    monkeypatch.setattr("app.oidc.jwks", lambda *a, **k: {})
+    monkeypatch.setattr("app.oidc.verify_id_token",
+                        lambda *a, **k: {"sub": "u1", "email": email, "groups": ["members"]})
+    return app, settings
+
+
+def test_member_signin_provisions_account_and_session(tmp_path, monkeypatch):
+    app, settings = _member_app(tmp_path, monkeypatch)
+    client = app.test_client()
+    assert client.get("/auth/pocketid").status_code == 302
+    r = client.get("/auth/pocketid/callback?code=abc&state=s1")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/app")
+    # the dashboard now renders for that account
+    dash = client.get("/app")
+    assert dash.status_code == 200 and "Your links" in dash.get_data(as_text=True)
+    from app import db as dbmod
+    conn = dbmod.connect(dbmod.db_path(settings.data_dir))
+    row = conn.execute("SELECT * FROM accounts WHERE email=?", ("owner@kituwa.com",)).fetchone()
+    conn.close()
+    assert row is not None and row["email_verified"] == 1
+    assert row["pw_hash"] == "!pocketid"   # password login cannot work for this account
+
+
+def test_member_callback_rejects_bad_state(tmp_path, monkeypatch):
+    app, _ = _member_app(tmp_path, monkeypatch)
+    client = app.test_client()
+    client.get("/auth/pocketid")
+    assert client.get("/auth/pocketid/callback?code=abc&state=wrong").status_code == 400
+
+
+def test_member_signin_disabled_without_client(client):
+    assert client.get("/auth/pocketid").status_code == 503

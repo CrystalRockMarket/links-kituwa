@@ -113,6 +113,13 @@ def create_app(settings: Settings) -> Flask:
         if not settings.allow_signup:
             return render_template("message.html", title="Signups are closed",
                                    body="Accounts are invite-only right now."), 403
+        if settings.mailbox_mode == "none":
+            # Without a mail relay a confirmation link cannot be delivered, and
+            # an account nobody can confirm is a dead end. Say so.
+            return render_template("message.html", title="Use Pocket ID to sign up",
+                                   body="Email accounts open once transactional mail is "
+                                        "configured. Until then, sign in with Pocket ID — it "
+                                        "creates your account in one click."), 503
         error = ""
         if request.method == "POST":
             check_csrf()
@@ -199,6 +206,71 @@ def create_app(settings: Settings) -> Flask:
             error = "Email or password is not correct."
         return render_template("login.html", error=error), (401 if error else 200)
 
+    # --- consumer sign-in with Pocket ID ----------------------------------
+    def start_session(account_row) -> None:
+        token = security.new_token()
+        csrf = security.new_token(16)
+        conn().execute(
+            "INSERT INTO sessions(token, account_id, csrf, created_at, expires_at) VALUES (?,?,?,?,?)",
+            (security.token_digest(token), account_row["id"], csrf,
+             security.utcnow(), security.iso_after(days=settings.session_days)),
+        )
+        session.clear()
+        session.permanent = True
+        session["sid"] = token
+
+    @app.get("/auth/pocketid")
+    def member_login():
+        if not settings.member_client_id:
+            return render_template("message.html", title="Sign-in is not configured",
+                                   body="Pocket ID sign-in is not wired to this service yet."), 503
+        flow = oidc.begin(settings.oidc_issuer, settings.member_client_id,
+                          settings.base_url + "/auth/pocketid/callback")
+        session["oidc_member"] = {"state": flow["state"], "nonce": flow["nonce"],
+                                  "verifier": flow["verifier"],
+                                  "token_endpoint": flow["token_endpoint"]}
+        return redirect(flow["url"])
+
+    @app.get("/auth/pocketid/callback")
+    def member_callback():
+        flow = session.pop("oidc_member", None)
+        if not flow:
+            abort(400, "No sign-in in progress.")
+        if request.args.get("state") != flow["state"]:
+            abort(400, "State mismatch.")
+        code = request.args.get("code")
+        if not code:
+            abort(400, "No authorization code.")
+        try:
+            tokens = oidc.exchange(flow["token_endpoint"], code,
+                                   settings.base_url + "/auth/pocketid/callback",
+                                   settings.member_client_id, settings.member_client_secret,
+                                   flow["verifier"])
+            claims = oidc.verify_id_token(tokens["id_token"], oidc.jwks(settings.oidc_issuer),
+                                          settings.oidc_issuer, settings.member_client_id,
+                                          nonce=flow["nonce"])
+        except (oidc.OIDCError, KeyError, ValueError):
+            return render_template("message.html", title="Sign-in failed",
+                                   body="The identity provider rejected this sign-in."), 401
+        email = (claims.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            return render_template("message.html", title="No email on that account",
+                                   body="Pocket ID did not return an email address, so no "
+                                        "Secret Link account can be matched to it."), 403
+        row = conn().execute("SELECT * FROM accounts WHERE email=?", (email,)).fetchone()
+        if row is None:
+            cur = conn().execute(
+                "INSERT INTO accounts(email, pw_hash, created_at, email_verified, notify_email) "
+                "VALUES (?,?,?,1,?)",
+                (email, "!pocketid", security.utcnow(), email),
+            )
+            row = conn().execute("SELECT * FROM accounts WHERE id=?",
+                                 (int(cur.lastrowid),)).fetchone()
+        elif not row["email_verified"]:
+            conn().execute("UPDATE accounts SET email_verified=1 WHERE id=?", (row["id"],))
+        start_session(row)
+        return redirect(url_for("app_home"))
+
     @app.post("/logout")
     def logout():
         check_csrf()
@@ -283,6 +355,22 @@ def create_app(settings: Settings) -> Flask:
         session["admin"] = {"sub": claims.get("sub", ""),
                             "email": claims.get("email", ""),
                             "name": claims.get("name", "")}
+        # An operator is also a person: give them the normal user session too,
+        # so /app (their own links) is reachable without a second sign-in.
+        email = (claims.get("email") or "").strip().lower()
+        if email and "@" in email:
+            row = conn().execute("SELECT * FROM accounts WHERE email=?", (email,)).fetchone()
+            if row is None:
+                cur = conn().execute(
+                    "INSERT INTO accounts(email, pw_hash, created_at, email_verified, notify_email) "
+                    "VALUES (?,?,?,1,?)",
+                    (email, "!pocketid", security.utcnow(), email),
+                )
+                row = conn().execute("SELECT * FROM accounts WHERE id=?",
+                                     (int(cur.lastrowid),)).fetchone()
+            admin_state = session["admin"]
+            start_session(row)
+            session["admin"] = admin_state
         return redirect(url_for("admin_home"))
 
     @app.post("/admin/logout")
