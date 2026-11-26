@@ -1,8 +1,16 @@
-"""SQLite storage. One writer at a time, WAL, explicit transactions.
+"""SQLite storage for the zero-knowledge link service.
 
-Every mutation that decides whether a link is still usable runs inside
-``BEGIN IMMEDIATE`` so two simultaneous opens of a one-time link can never both
-succeed (see ``tracking.consume``).
+Two tables carry links:
+
+* ``links`` — post-cutover, zero-knowledge. The server stores an opaque
+  ciphertext blob and a counter. It never stores a destination URL, a note, a
+  password, a key, an IP, a user agent or a referrer.
+* ``legacy_links`` — links created before the 2026-11-26 cutover. They keep
+  resolving until they expire or are destroyed, then the sweeper deletes the
+  row (target included). Nothing new is ever written here.
+
+Everything else is account plumbing for the legacy dashboard and the operator
+console. No table has a column that can describe a click.
 """
 from __future__ import annotations
 
@@ -18,7 +26,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     email_verified INTEGER NOT NULL DEFAULT 0,
     default_uses   INTEGER NOT NULL DEFAULT 1,
     notify_email   TEXT,
-    alerts         INTEGER NOT NULL DEFAULT 1
+    alerts         INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -29,63 +37,58 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TEXT NOT NULL
 );
 
+-- The zero-knowledge link table. Every column is either an opaque blob or a
+-- number that the server must know to enforce the budget.
 CREATE TABLE IF NOT EXISTS links (
+    id            TEXT PRIMARY KEY,              -- 128-bit base64url, server-chosen
+    ciphertext    BLOB,                          -- NULL once spent or expired
+    iv            BLOB,                          -- 96-bit AES-GCM nonce
+    salt          BLOB,                          -- password KDF salt, NULL if none
+    kdf           TEXT NOT NULL DEFAULT 'none',  -- none | pbkdf2-sha256-600k
+    max_uses      INTEGER,                       -- NULL = unlimited
+    uses          INTEGER NOT NULL DEFAULT 0,
+    expires_at    TEXT,
+    not_before    TEXT,
+    created_at    TEXT NOT NULL,                 -- rounded to the hour
+    redirect_mode TEXT NOT NULL DEFAULT 'auto',  -- auto | manual
+    has_note      INTEGER NOT NULL DEFAULT 0,    -- a note exists inside the blob
+    manage_hash   TEXT,                          -- sha256 of the manage token
+    disabled_at   TEXT,
+    spent_at      TEXT,                          -- content wiped at this time
+    reported      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS links_live ON links(spent_at, expires_at);
+
+-- Pre-cutover links. Target is plaintext because the server has always seen
+-- it; there is no honest way to encrypt a URL that was already disclosed.
+-- Rows are deleted by the sweeper at expiry or when their budget is spent.
+CREATE TABLE IF NOT EXISTS legacy_links (
     id           INTEGER PRIMARY KEY,
-    account_id   INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    account_id   INTEGER,
     code         TEXT NOT NULL UNIQUE,
     target       TEXT NOT NULL,
     label        TEXT NOT NULL DEFAULT '',
-    max_uses     INTEGER,              -- NULL = unlimited
+    max_uses     INTEGER,
     uses         INTEGER NOT NULL DEFAULT 0,
-    mode         TEXT NOT NULL DEFAULT 'destroy',   -- destroy | track
+    mode         TEXT NOT NULL DEFAULT 'destroy',
     created_at   TEXT NOT NULL,
     expires_at   TEXT,
     destroyed_at TEXT,
     disabled_at  TEXT
 );
-CREATE INDEX IF NOT EXISTS links_owner ON links(account_id, id DESC);
+CREATE INDEX IF NOT EXISTS legacy_owner ON legacy_links(account_id, id DESC);
 
-CREATE TABLE IF NOT EXISTS visitors (
+-- A report can carry the destination only because the reporter chose to paste
+-- it. It is never derived from the link.
+CREATE TABLE IF NOT EXISTS reports (
     id         INTEGER PRIMARY KEY,
-    link_id    INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
-    fp         TEXT NOT NULL,
-    first_seen TEXT NOT NULL,
-    opens      INTEGER NOT NULL DEFAULT 0,
-    last_ip    TEXT,
-    UNIQUE(link_id, fp)
-);
-
-CREATE TABLE IF NOT EXISTS opens (
-    id         INTEGER PRIMARY KEY,
-    link_id    INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
-    visitor_id INTEGER REFERENCES visitors(id) ON DELETE SET NULL,
-    ts         TEXT NOT NULL,
-    ip         TEXT,
-    ua         TEXT,
-    referer    TEXT,
-    via        TEXT,
-    kind       TEXT NOT NULL DEFAULT 'open'   -- open | preview | share
-);
-CREATE INDEX IF NOT EXISTS opens_link ON opens(link_id, id DESC);
-
-CREATE TABLE IF NOT EXISTS share_tokens (
-    token      TEXT PRIMARY KEY,
-    link_id    INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
-    visitor_id INTEGER NOT NULL REFERENCES visitors(id) ON DELETE CASCADE,
+    link_id    TEXT NOT NULL,
+    reason     TEXT NOT NULL DEFAULT '',
+    url        TEXT,
     created_at TEXT NOT NULL,
-    opens      INTEGER NOT NULL DEFAULT 0
+    resolved   INTEGER NOT NULL DEFAULT 0
 );
-
-CREATE TABLE IF NOT EXISTS alerts (
-    id         INTEGER PRIMARY KEY,
-    account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    link_id    INTEGER REFERENCES links(id) ON DELETE CASCADE,
-    kind       TEXT NOT NULL,
-    body       TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    seen       INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS alerts_owner ON alerts(account_id, id DESC);
+CREATE INDEX IF NOT EXISTS reports_open ON reports(resolved, id DESC);
 
 CREATE TABLE IF NOT EXISTS verify_tokens (
     token      TEXT PRIMARY KEY,
@@ -95,11 +98,13 @@ CREATE TABLE IF NOT EXISTS verify_tokens (
 );
 
 CREATE TABLE IF NOT EXISTS login_attempts (
-    key        TEXT PRIMARY KEY,
+    key        TEXT PRIMARY KEY,   -- sha256(email) + hmac(ip), never the raw IP
     fails      INTEGER NOT NULL DEFAULT 0,
     first_fail TEXT NOT NULL
 );
 """
+
+TRACKING_TABLES = ("opens", "visitors", "share_tokens", "alerts")
 
 
 def connect(path: Path) -> sqlite3.Connection:
@@ -111,27 +116,54 @@ def connect(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def init_db(path: Path) -> None:
+def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    try:
+        return {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+    except sqlite3.DatabaseError:
+        return set()
+
+
+def migrate(conn: sqlite3.Connection) -> list[str]:
+    """Bring any older database to the zero-knowledge schema. Idempotent.
+
+    Returns the list of changes applied, for the work log and the tests.
+    """
+    done: list[str] = []
+    cols = _columns(conn, "links")
+
+    # 1. Pre-cutover `links` (had a plaintext `target`) becomes `legacy_links`.
+    if cols and "target" in cols:
+        conn.execute("ALTER TABLE links RENAME TO legacy_links")
+        done.append("links -> legacy_links")
+
+    conn.executescript(SCHEMA)
+
+    # 2. Click history is removed, not archived. Owner instruction 2026-11-26.
+    for table in TRACKING_TABLES:
+        if _columns(conn, table):
+            conn.execute(f"DROP TABLE {table}")
+            done.append(f"dropped {table}")
+
+    # 3. Legacy rows lose the columns that described people, keep the ones the
+    #    resolver needs.
+    legacy = _columns(conn, "legacy_links")
+    for col in ("ip", "ua", "referer", "fp"):
+        if col in legacy:
+            conn.execute(f"ALTER TABLE legacy_links DROP COLUMN {col}")
+            done.append(f"legacy_links.{col} dropped")
+
+    if done:
+        conn.execute("VACUUM")
+    return done
+
+
+def init_db(path: Path) -> list[str]:
     conn = connect(path)
     try:
-        conn.executescript(SCHEMA)
+        return migrate(conn)
     finally:
         conn.close()
 
 
 def db_path(data_dir: Path) -> Path:
     return data_dir / "secret-link.sqlite3"
-
-# Owner decision 2026-11-25: a clicker's address is kept 90 days, then dropped.
-IP_RETENTION_DAYS = 90
-
-
-def purge_ips(conn, days: int = IP_RETENTION_DAYS) -> int:
-    """Null out addresses older than the retention window, keep the counts."""
-    from datetime import datetime, timedelta, timezone
-
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    cur = conn.execute("UPDATE opens SET ip=NULL WHERE ip IS NOT NULL AND ts < ?", (cutoff,))
-    conn.execute("UPDATE visitors SET last_ip=NULL WHERE last_ip IS NOT NULL AND first_seen < ?", (cutoff,))
-    conn.commit()
-    return cur.rowcount

@@ -3,56 +3,82 @@
 {% block section %}Operators{% endblock %}
 {% block crumb %}Console{% endblock %}
 {% block body %}
-<div class="page-head admin-scope">
+<div class="page-head">
   <div>
-    <p class="kicker">Operator scope · Pocket ID</p>
-    <h1>Service console</h1>
-    <p class="page-sub">Across every account. Signed in as {{ who.get('email') or who.get('sub') }}.</p>
-  </div>
-  <div class="row">
-    <a class="btn btn-sm" href="{{ url_for('app_home') }}">My links</a>
-    <form method="post" action="{{ url_for('admin_logout') }}" class="inline">
-      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-      <button class="btn btn-sm btn-ghost" type="submit">Sign out</button>
-    </form>
+    <p class="kicker">Operator</p>
+    <h1>Console</h1>
+    <p class="page-sub">Counts and abuse reports. There is no per-click data to show,
+      because none is collected.</p>
   </div>
 </div>
 
 <dl class="stat-grid">
-  <div class="card stat"><dt>Accounts</dt><dd>{{ stats['accounts'] }}</dd></div>
-  <div class="card stat"><dt>Links</dt><dd>{{ stats['links'] }}</dd></div>
-  <div class="card stat"><dt>Active</dt><dd>{{ stats['active'] }}</dd></div>
-  <div class="card stat"><dt>Destroyed</dt><dd>{{ stats['destroyed'] }}</dd></div>
-  <div class="card stat"><dt>Opens</dt><dd>{{ stats['opens'] }}</dd></div>
-  <div class="card stat"><dt>Opens today</dt><dd>{{ stats['today'] }}</dd></div>
-  <div class="card stat"><dt>Previews</dt><dd>{{ stats['previews'] }}</dd></div>
-  <div class="card stat"><dt>Alerts</dt><dd>{{ stats['alerts'] }}</dd></div>
+  <div class="card stat"><dt>Live links</dt><dd>{{ stats.active }}</dd></div>
+  <div class="card stat"><dt>Total links</dt><dd>{{ stats.links }}</dd></div>
+  <div class="card stat"><dt>Spent</dt><dd>{{ stats.spent }}</dd></div>
+  <div class="card stat"><dt>Legacy</dt><dd>{{ stats.legacy }}</dd></div>
+  <div class="card stat"><dt>Open reports</dt><dd>{{ stats.reports }}</dd></div>
+  <div class="card stat"><dt>Accounts</dt><dd>{{ stats.accounts }}</dd></div>
 </dl>
 
-<section class="card">
-  <div class="card-pad row-between" style="padding-bottom:.6rem">
-    <h2>Recent links</h2><span class="chip">{{ links|length }} shown</span>
-  </div>
-  {% if not links %}
-    <div class="empty" style="margin:0 1.25rem 1.25rem">No links yet.</div>
-  {% else %}
+{% if reports %}
+<section class="card" style="margin-top:1rem">
+  <div class="card-pad"><h2>Reports</h2></div>
   <div class="table-wrap">
     <table class="list">
-      <thead><tr><th>Owner</th><th>Label</th><th>Code</th><th>Opens</th><th>Budget</th><th>Created</th></tr></thead>
+      <thead><tr><th>Link</th><th>Reason</th><th>Destination (only if the reporter pasted it)</th><th></th></tr></thead>
       <tbody>
-      {% for l in links %}
+      {% for r in reports %}
         <tr>
-          <td class="mono trunc" title="{{ l['email'] }}">{{ l['email'] }}</td>
-          <td>{{ l['label'] or '—' }}</td>
-          <td class="mono">/{{ l['code'] }}</td>
-          <td class="mono">{{ l['ops'] }}</td>
-          <td class="mono">{{ l['uses'] }}{% if l['max_uses'] is not none %} / {{ l['max_uses'] }}{% else %} / ∞{% endif %}</td>
-          <td class="muted">{{ l['created_at']|dt }}</td>
+          <td class="mono">{{ r['link_id'][:10] }}…</td>
+          <td>{{ r['reason'] }}</td>
+          <td class="mono trunc" title="{{ r['url'] or '' }}">{{ r['url'] or '—' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin_disable', link_id=r['link_id']) }}" class="inline">
+              <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+              <button class="btn btn-danger btn-sm" type="submit">Disable link</button>
+            </form>
+            <form method="post" action="{{ url_for('admin_resolve', report_id=r['id']) }}" class="inline">
+              <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+              <button class="btn btn-ghost btn-sm" type="submit">Resolve</button>
+            </form>
+          </td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
-  {% endif %}
+</section>
+{% endif %}
+
+<section class="card" style="margin-top:1rem">
+  <div class="card-pad row-between" style="padding-bottom:.6rem">
+    <h2>Recent links</h2>
+    <span class="chip">{{ links|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="list">
+      <thead><tr><th>Id</th><th>Uses</th><th>Created</th><th>Expires</th><th>State</th><th></th></tr></thead>
+      <tbody>
+      {% for l in links %}
+        <tr>
+          <td class="mono">{{ l['id'][:12] }}…</td>
+          <td class="mono">{{ l['uses'] }}{% if l['max_uses'] is not none %} / {{ l['max_uses'] }}{% else %} / ∞{% endif %}</td>
+          <td class="muted">{{ l['created_at']|dt }}</td>
+          <td class="muted">{{ l['expires_at']|dt if l['expires_at'] else 'never' }}</td>
+          <td class="muted">{{ l['spent_at'] and 'spent' or (l['disabled_at'] and 'disabled' or 'active') }}</td>
+          <td>
+            {% if not l['disabled_at'] and not l['spent_at'] %}
+            <form method="post" action="{{ url_for('admin_disable', link_id=l['id']) }}" class="inline">
+              <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+              <button class="btn btn-sm" type="submit">Disable</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endblock %}

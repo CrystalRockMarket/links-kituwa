@@ -141,7 +141,7 @@ def test_member_signin_provisions_account_and_session(tmp_path, monkeypatch):
     assert r.status_code == 302 and r.headers["Location"].endswith("/app")
     # the dashboard now renders for that account
     dash = client.get("/app")
-    assert dash.status_code == 200 and "Your links" in dash.get_data(as_text=True)
+    assert dash.status_code == 200 and "Links created before encryption" in dash.get_data(as_text=True)
     from app import db as dbmod
     conn = dbmod.connect(dbmod.db_path(settings.data_dir))
     row = conn.execute("SELECT * FROM accounts WHERE email=?", ("owner@kituwa.com",)).fetchone()

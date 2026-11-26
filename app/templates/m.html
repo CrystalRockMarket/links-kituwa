@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manage link · links.kituwa.com</title>
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="secret" data-link-id="{{ link_id }}">
+<main class="secret-card">
+  <header class="secret-head">
+    <span class="brand-text">links<em>.kituwa</em></span>
+    <span class="chip">manage</span>
+  </header>
+
+  <section id="step-loading" class="secret-step"><p class="muted">Checking…</p></section>
+
+  <section id="step-nokey" class="secret-step" hidden>
+    <h1>This manage link is incomplete</h1>
+    <p>The secret part after <code>#</code> is missing. Use the full manage link you
+      were given when the link was created.</p>
+  </section>
+
+  <section id="step-main" class="secret-step" hidden>
+    <p class="kicker">Link state</p>
+    <h1 id="state">—</h1>
+    <dl class="stat-grid">
+      <div class="card stat"><dt>Opens</dt><dd id="uses">—</dd></div>
+      <div class="card stat"><dt>Left</dt><dd id="left">—</dd></div>
+      <div class="card stat"><dt>Expires</dt><dd id="expires">—</dd></div>
+    </dl>
+    <p class="hint">The operator cannot see where this link points, and neither can this
+      page. You can change the budget and the clock, not the content.</p>
+    <div class="row wrap">
+      <button class="btn" data-act="extend" data-seconds="86400" type="button">+1 day</button>
+      <button class="btn" data-act="extend" data-seconds="604800" type="button">+7 days</button>
+      <button class="btn" data-act="shorten" data-seconds="3600" type="button">Expire in 1 hour</button>
+      <button class="btn btn-danger" data-act="delete" type="button">Delete now</button>
+    </div>
+    <p class="hint" id="msg" role="status"></p>
+  </section>
+
+  <footer class="secret-foot">
+    <a href="{{ url_for('privacy') }}" rel="noopener">Privacy</a>
+    <a href="{{ url_for('home') }}" rel="noopener">Make a new link</a>
+  </footer>
+</main>
+<script src="{{ url_for('static', filename='crypto.js') }}" integrity="{{ sri('crypto.js') }}" defer></script>
+<script src="{{ url_for('static', filename='manage.js') }}" integrity="{{ sri('manage.js') }}" defer></script>
+</body>
+</html>

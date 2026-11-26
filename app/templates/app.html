@@ -1,86 +1,38 @@
 {% extends "base.html" %}
-{% block title %}My links{% endblock %}
+{% block title %}My old links{% endblock %}
 {% block section %}Links{% endblock %}
-{% block crumb %}My links{% endblock %}
-{% block actions %}
-  <a class="btn btn-sm" href="#create">New link</a>
-{% endblock %}
+{% block crumb %}Legacy{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
-    <p class="kicker">Workspace</p>
-    <h1>Your links</h1>
-    <p class="page-sub">Create a link, set how many times it may be opened, and watch what happens to it.</p>
+    <p class="kicker">Legacy</p>
+    <h1>Links created before encryption</h1>
+    <p class="page-sub">These links were made before 26 November 2026, when the service
+      stored destinations in plaintext. They keep working until they expire or are used
+      up. Nothing new is recorded about their opens.</p>
   </div>
 </div>
 
-{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-
-<section class="card card-pad create-card" id="create">
-  <h2>Create a link</h2>
-  <form method="post" action="{{ url_for('create') }}" class="create-grid" style="margin-top:.85rem">
-    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-    <label class="span-2">Destination URL
-      <input type="url" name="target" placeholder="https://example.com/the-thing" required autocomplete="off">
-    </label>
-    <label>Label (optional)
-      <input type="text" name="label" maxlength="120" placeholder="Invoice for Sam">
-    </label>
-    <label>Uses
-      <select name="max_uses">
-        <option value="1" selected>1 — one-time</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="5">5</option>
-        <option value="0">Unlimited — tracking</option>
-      </select>
-    </label>
-    <label>Expires
-      <select name="expires_days">
-        <option value="">Never</option>
-        <option value="1">1 day</option>
-        <option value="7">7 days</option>
-        <option value="30">30 days</option>
-      </select>
-    </label>
-    <button class="btn btn-primary" type="submit">Create link</button>
-  </form>
-</section>
-
-{% if alerts %}
-<section class="card card-pad" style="margin-bottom:1rem">
-  <div class="row-between"><h2>Alerts</h2><span class="chip">{{ alerts|length }} recent</span></div>
-  <ul class="alerts" style="margin-top:.7rem">
-    {% for a in alerts %}
-      <li class="{% if not a['seen'] %}unread{% endif %}">
-        <span class="kind">{{ a['kind']|replace('_',' ') }}</span>
-        <span>{{ a['body'] }}</span>
-        <time>{{ a['created_at']|dt }}</time>
-      </li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
-
 <section class="card">
   <div class="card-pad row-between" style="padding-bottom:.6rem">
-    <h2>Links</h2>
+    <h2>Old links</h2>
     <span class="chip">{{ links|length }} total</span>
   </div>
   {% if not links %}
-    <div class="empty" style="margin:0 1.25rem 1.25rem">Nothing yet — the form above makes your first one.</div>
+    <div class="empty" style="margin:0 1.25rem 1.25rem">None. New links are made on the
+      <a href="{{ url_for('home') }}#create">create page</a> and never stored in plaintext.</div>
   {% else %}
   <div class="table-wrap">
     <table class="list">
-      <thead><tr><th>Label</th><th>Short link</th><th>Uses</th><th>People</th><th>Created</th></tr></thead>
+      <thead><tr><th>Label</th><th>Short link</th><th>Uses</th><th>Created</th><th>State</th></tr></thead>
       <tbody>
       {% for l in links %}
         <tr>
           <td><a href="{{ url_for('link_detail', link_id=l['id']) }}">{{ l['label'] or 'Untitled' }}</a></td>
           <td class="mono">/{{ l['code'] }}</td>
           <td class="mono">{{ l['uses'] }}{% if l['max_uses'] is not none %} / {{ l['max_uses'] }}{% else %} / ∞{% endif %}</td>
-          <td class="mono">{{ l['visitors'] }}</td>
           <td class="muted">{{ l['created_at']|dt }}</td>
+          <td class="muted">{{ l['destroyed_at'] and 'destroyed' or (l['disabled_at'] and 'paused' or 'active') }}</td>
         </tr>
       {% endfor %}
       </tbody>

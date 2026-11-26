@@ -1,24 +1,41 @@
 [Unit]
-Description=links.kituwa.com — short links that expire by use
+Description=links.kituwa.com — end-to-end encrypted short links
 After=network.target
 
 [Service]
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/services/links-kituwa
+WorkingDirectory=/home/ubuntu/services/links-kituwa/current
 Environment=SL_DATA_DIR=/home/ubuntu/services/links-kituwa/data
+Environment=SL_RELEASE_DIR=/home/ubuntu/services/links-kituwa/data/release
 Environment=SL_BASE_URL=https://links.kituwa.com
+Environment=SL_REPO_URL=https://github.com/CrystalRockMarket/links-kituwa
 Environment=SL_HOST=127.0.0.1
 Environment=SL_PORT=8891
 Environment=SL_COOKIE_SECURE=1
-Environment=SL_IP_MODE=full
+Environment=SL_SWEEP=1
+Environment=SL_BEHIND_PROXY=1
 Environment=SL_OIDC_CLIENT_ID=84365ec8-67dd-43f9-8bb6-294d706662b4
 Environment=SL_OIDC_CLIENT_SECRET_FILE=/home/ubuntu/services/links-kituwa/oidc.secret
+Environment=SL_OIDC_INTERNAL_BASE=http://127.0.0.1:1411
+Environment=SL_MEMBER_CLIENT_ID=2d4236fc-8252-474e-96ac-4d01a8156076
+Environment=SL_MEMBER_CLIENT_SECRET_FILE=/home/ubuntu/services/links-kituwa/member.secret
 ExecStart=/home/ubuntu/services/links-kituwa/.venv/bin/python run.py
 Restart=always
 RestartSec=3
+
+# Hardening
 NoNewPrivileges=yes
 PrivateTmp=yes
+ProtectSystem=full
+ReadWritePaths=/home/ubuntu/services/links-kituwa/data
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target

@@ -1,15 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Settings{% endblock %}
+{% block section %}Account{% endblock %}
+{% block crumb %}Settings{% endblock %}
 {% block body %}
-<div class="panel narrow">
-  <h1>Settings</h1>
-  <p class="muted">Signed in as {{ g.account['email'] }}{% if not g.account['email_verified'] %} — email not confirmed yet{% endif %}.</p>
-  <form method="post" class="stack">
+<section class="card card-pad narrow">
+  <h1>Account</h1>
+  <form method="post" class="stack" style="margin-top:.8rem">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-    <label>Alert email <input type="email" name="notify_email" value="{{ g.account['notify_email'] or '' }}"></label>
-    <label>Default uses on a new link <input type="number" name="default_uses" min="1" max="100000" value="{{ g.account['default_uses'] }}"></label>
-    <label class="check"><input type="checkbox" name="alerts" {% if g.account['alerts'] %}checked{% endif %}> Email me when a link is opened by a new device or forwarded</label>
-    <button class="cta" type="submit">Save</button>
+    <label>Contact email <input type="email" name="notify_email" value="{{ g.account['email'] }}" autocomplete="email"></label>
+    <button class="btn btn-primary" type="submit">Save</button>
   </form>
-</div>
+  <p class="hint" style="margin-top:1rem">The service no longer sends alerts: there is no
+    click data to alert on.</p>
+</section>
 {% endblock %}

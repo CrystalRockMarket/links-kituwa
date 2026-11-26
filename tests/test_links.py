@@ -1,147 +1,198 @@
-"""The destructive-link contract: exact budgets, atomic decrement, previews free."""
+"""The zero-knowledge contract: opaque storage, exact budgets, immediate wipe."""
+import os
 import threading
 
-import pytest
-
 from app import db as dbmod
-from app import security, tracking
+from app import security, store
+
+from conftest import b64, make_link, unb64
 
 
-def make_link(conn, account_id, **kw):
-    return tracking.create_link(conn, account_id, target="https://example.com/x", **kw)
+def test_create_stores_only_opaque_bytes(client, conn):
+    sealed = os.urandom(64)
+    iv = os.urandom(12)
+    data = make_link(client, ciphertext=sealed, iv=iv, raw=True)
+    assert data["id"] and data["manage_token"]
+    row = conn.execute("SELECT * FROM links WHERE id=?", (data["id"],)).fetchone()
+    assert row["ciphertext"] == sealed
+    assert row["iv"] == iv
+    assert row["uses"] == 0
+    # The server knows nothing that describes the destination.
+    for banned in ("ip", "ua", "referer", "fingerprint", "target", "note", "key"):
+        assert banned not in row.keys()
 
 
-def open_once(conn, code, ua="Mozilla/5.0 test", ip="203.0.113.9", referer=""):
-    return tracking.consume(conn, code, ip=ip, ua=ua, referer=referer, lang="en",
-                            secret=b"s", ip_mode="full")
+def test_no_table_has_a_click_column(conn):
+    names = {r["name"] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    assert "opens" not in names and "visitors" not in names and "share_tokens" not in names
+    for table in names:
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        assert not (cols & {"ip", "ua", "referer", "fp", "last_ip", "user_agent"})
 
 
-def test_one_time_link_dies_on_first_open(conn):
-    acc = conn.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = make_link(conn, acc)
-    assert link["max_uses"] == 1
+def test_consume_returns_the_blob_once(client, conn):
+    sealed = os.urandom(40)
+    data = make_link(client, ciphertext=sealed, raw=True)
+    first = client.post(f"/api/links/{data['id']}/consume", json={})
+    assert first.status_code == 200
+    assert unb64(first.get_json()["ciphertext"]) == sealed
+    assert first.get_json()["uses_left"] == 0
 
-    first = open_once(conn, link["code"])
-    assert first.state == "ok"
-    assert first.uses_left == 0
-
-    second = open_once(conn, link["code"], ua="Mozilla/5.0 other")
-    assert second.state == "gone" and second.reason == "destroyed"
-
-    row = conn.execute("SELECT * FROM links WHERE id=?", (link["id"],)).fetchone()
-    assert row["uses"] == 1
-    assert row["destroyed_at"] is not None
-    assert tracking.state_of(row) == "destroyed"
+    second = client.post(f"/api/links/{data['id']}/consume", json={})
+    assert second.status_code == 410
+    row = conn.execute("SELECT ciphertext, spent_at FROM links WHERE id=?",
+                       (data["id"],)).fetchone()
+    assert row["ciphertext"] is None
+    assert row["spent_at"]
 
 
-def test_three_use_link_stops_at_three(conn):
-    acc = conn.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = make_link(conn, acc, max_uses=3)
-    results = [open_once(conn, link["code"], ua=f"Mozilla/5.0 device{i}").state for i in range(5)]
-    assert results == ["ok", "ok", "ok", "gone", "gone"]
+def test_preview_of_page_does_not_consume(client, conn):
+    data = make_link(client, raw=True)
+    for _ in range(5):
+        page = client.get(f"/l/{data['id']}")
+        assert page.status_code == 200
+        assert data["id"].encode() in page.data
+    row = conn.execute("SELECT uses FROM links WHERE id=?", (data["id"],)).fetchone()
+    assert row["uses"] == 0
+    assert client.get(f"/api/links/{data['id']}").get_json()["uses_left"] == 1
 
 
-def test_preview_never_consumes(tmp_path):
-    path = dbmod.db_path(tmp_path)
-    dbmod.init_db(path)
-    c = dbmod.connect(path)
-    acc = c.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = tracking.create_link(c, acc, target="https://example.com/")
-    res = tracking.consume(c, link["code"], ip="1.1.1.1", ua="facebookexternalhit/1.1",
-                           referer="", lang="en", preview=True, secret=b"s")
-    assert res.state == "preview"
-    row = c.execute("SELECT uses, destroyed_at FROM links WHERE id=?", (link["id"],)).fetchone()
-    assert row["uses"] == 0 and row["destroyed_at"] is None
-    c.close()
+def test_fifty_concurrent_consumes_exactly_one(settings, client, conn):
+    data = make_link(client, raw=True)
+    path = dbmod.db_path(settings.data_dir)
+    wins = []
+    lock = threading.Lock()
 
-
-def test_concurrent_opens_cannot_exceed_budget(tmp_path):
-    path = dbmod.db_path(tmp_path)
-    dbmod.init_db(path)
-    setup = dbmod.connect(path)
-    acc = setup.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = tracking.create_link(setup, acc, target="https://example.com/", max_uses=3)
-    code = link["code"]
-    setup.close()
-
-    won, errors = [], []
-    barrier = threading.Barrier(10)
-
-    def racer(i):
-        conn = dbmod.connect(path)
+    def hit():
+        c = dbmod.connect(path)
         try:
-            barrier.wait()
-            r = tracking.consume(conn, code, ip=f"198.51.100.{i}", ua=f"Mozilla/5.0 d{i}",
-                                 referer="", lang="en", secret=b"s")
+            r = store.consume(c, data["id"])
             if r.state == "ok":
-                won.append(i)
-        except Exception as exc:  # noqa: BLE001
-            errors.append(repr(exc))
+                with lock:
+                    wins.append(r.ciphertext)
         finally:
-            conn.close()
+            c.close()
 
-    threads = [threading.Thread(target=racer, args=(i,)) for i in range(10)]
+    threads = [threading.Thread(target=hit) for _ in range(50)]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
-
-    check = dbmod.connect(path)
-    row = check.execute("SELECT uses, max_uses FROM links WHERE code=?", (code,)).fetchone()
-    check.close()
-    assert not errors
-    assert len(won) == 3
-    assert row["uses"] == 3
+    assert len(wins) == 1, f"expected exactly one winner, got {len(wins)}"
+    row = conn.execute("SELECT uses, ciphertext FROM links WHERE id=?",
+                       (data["id"],)).fetchone()
+    assert row["uses"] == 1
+    assert row["ciphertext"] is None
 
 
-def test_unlimited_link_never_closes(conn):
-    acc = conn.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = make_link(conn, acc, max_uses=None, mode="track")
-    for i in range(12):
-        assert open_once(conn, link["code"], ua=f"Mozilla/5.0 d{i}").state == "ok"
-    row = conn.execute("SELECT uses, destroyed_at FROM links WHERE id=?", (link["id"],)).fetchone()
-    assert row["uses"] == 12 and row["destroyed_at"] is None
+def test_expired_link_returns_410(client, conn):
+    data = make_link(client, options={"max_uses": 1, "expires_in": 60}, raw=True)
+    conn.execute("UPDATE links SET expires_at=? WHERE id=?",
+                 (security.iso_after(seconds=-1), data["id"]))
+    resp = client.post(f"/api/links/{data['id']}/consume", json={})
+    assert resp.status_code == 410
+    assert resp.get_json()["reason"] == "expired"
 
 
-def test_expired_link_is_closed(conn):
-    acc = conn.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = make_link(conn, acc, max_uses=None, mode="track")
-    conn.execute("UPDATE links SET expires_at='2000-01-01T00:00:00' WHERE id=?", (link["id"],))
-    assert open_once(conn, link["code"]).reason == "expired"
+def test_not_before_blocks_until_time(client, conn):
+    data = make_link(client, options={"max_uses": 2, "expires_in": 3600,
+                                      "not_before_in": 600}, raw=True)
+    resp = client.post(f"/api/links/{data['id']}/consume", json={})
+    assert resp.status_code == 410
+    assert resp.get_json()["reason"] == "not yet active"
 
 
-def test_new_device_and_referrer_raise_alerts(conn):
-    acc = conn.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = make_link(conn, acc, max_uses=4, label="Invoice")
-    open_once(conn, link["code"], ua="Mozilla/5.0 phone")
-    open_once(conn, link["code"], ua="Mozilla/5.0 laptop", referer="https://mail.google.com/mail/u/0")
-    kinds = [r["kind"] for r in conn.execute("SELECT kind FROM alerts ORDER BY id").fetchall()]
-    assert "new_visitor" in kinds
-    assert "shared" in kinds
+def test_unlimited_link_never_wipes(client, conn):
+    data = make_link(client, options={"max_uses": None, "expires_in": 3600}, raw=True)
+    for _ in range(3):
+        assert client.post(f"/api/links/{data['id']}/consume", json={}).status_code == 200
+    row = conn.execute("SELECT uses, ciphertext FROM links WHERE id=?",
+                       (data["id"],)).fetchone()
+    assert row["uses"] == 3 and row["ciphertext"] is not None
 
 
-@pytest.mark.parametrize("target", ["javascript:alert(1)", "data:text/html,hi", "file:///etc/passwd",
-                                    "https://user:pw@example.com/", "http://", ""])
-def test_unsafe_targets_rejected(conn, target):
-    acc = conn.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    with pytest.raises(ValueError):
-        tracking.create_link(conn, acc, target=target)
+def test_password_requires_salt(client):
+    resp = client.post("/api/links", json={
+        "ciphertext": b64(os.urandom(32)), "iv": b64(os.urandom(12)),
+        "kdf": "pbkdf2-sha256-600k", "options": {"max_uses": 1}})
+    assert resp.status_code == 400
+    assert "salt" in resp.get_json()["error"]
 
 
-def test_bare_domain_gets_https(conn):
-    acc = conn.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')").lastrowid
-    link = tracking.create_link(conn, acc, target="example.com/page")
-    assert link["target"] == "https://example.com/page"
+def test_ciphertext_size_limit(client):
+    resp = client.post("/api/links", json={
+        "ciphertext": b64(os.urandom(9000)), "iv": b64(os.urandom(12)),
+        "options": {"max_uses": 1}})
+    assert resp.status_code == 400
 
 
-def test_ip_privacy_modes():
-    assert security.store_ip("203.0.113.42", "full") == "203.0.113.42"
-    assert security.store_ip("203.0.113.42", "truncated") == "203.0.113.0/24"
-    assert security.store_ip("2001:db8:1:2::9", "truncated") == "2001:db8:1::/48"
-    assert len(security.store_ip("203.0.113.42", "hashed")) == 24
+def test_manage_token_controls_state_and_delete(client, conn):
+    data = make_link(client, raw=True)
+    bad = client.post(f"/api/manage/{data['id']}",
+                      json={"token": "nope", "action": "state"})
+    assert bad.status_code == 404
+
+    state = client.post(f"/api/manage/{data['id']}",
+                        json={"token": data["manage_token"], "action": "state"})
+    assert state.status_code == 200
+    assert state.get_json()["state"] == "active"
+
+    ext = client.post(f"/api/manage/{data['id']}",
+                      json={"token": data["manage_token"], "action": "extend",
+                            "seconds": 86400})
+    assert ext.status_code == 200
+
+    gone = client.post(f"/api/manage/{data['id']}",
+                       json={"token": data["manage_token"], "action": "delete"})
+    assert gone.status_code == 200
+    row = conn.execute("SELECT ciphertext, spent_at FROM links WHERE id=?",
+                       (data["id"],)).fetchone()
+    assert row["ciphertext"] is None and row["spent_at"]
 
 
-def test_preview_detection():
-    assert security.is_preview("WhatsApp/2.23", "")
-    assert security.is_preview("Mozilla/5.0", "prefetch")
-    assert not security.is_preview("Mozilla/5.0 (iPhone) Safari", "")
+def test_report_and_disable(client, conn):
+    data = make_link(client, raw=True)
+    assert client.post(f"/api/links/{data['id']}/report",
+                       json={"reason": "phishing", "url": "https://evil.example/"}).status_code == 200
+    rep = conn.execute("SELECT * FROM reports WHERE link_id=?", (data["id"],)).fetchone()
+    assert rep["url"] == "https://evil.example/"
+    assert store.disable(conn, data["id"]) is True
+    assert client.post(f"/api/links/{data['id']}/consume", json={}).status_code == 410
+
+
+def test_sweep_wipes_expired_and_deletes_old_tombstones(conn):
+    conn.execute(
+        "INSERT INTO links(id, ciphertext, iv, created_at, expires_at) VALUES "
+        "('aaaaaaaaaaaaaaaaaaaaaa', x'00', x'00', ?, ?)",
+        (security.utcnow(), security.iso_after(seconds=-5)))
+    conn.execute(
+        "INSERT INTO links(id, created_at, spent_at) VALUES ('bbbbbbbbbbbbbbbbbbbbbb', ?, ?)",
+        (security.utcnow(), security.iso_after(days=-30)))
+    result = store.sweep(conn)
+    assert result["wiped"] == 1
+    assert result["deleted"] == 1
+    assert conn.execute("SELECT COUNT(*) c FROM links").fetchone()["c"] == 1
+    assert conn.execute("SELECT ciphertext FROM links").fetchone()["ciphertext"] is None
+
+
+def test_legacy_link_resolves_without_recording(client, conn):
+    conn.execute(
+        "INSERT INTO legacy_links(code, target, max_uses, uses, created_at) "
+        "VALUES ('abcd2345', 'https://example.com/old', 2, 0, ?)", (security.utcnow(),))
+    resp = client.get("/abcd2345")
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "https://example.com/old"
+    row = conn.execute("SELECT uses FROM legacy_links WHERE code='abcd2345'").fetchone()
+    assert row["uses"] == 1
+    assert conn.execute("SELECT COUNT(*) c FROM sqlite_master WHERE name='opens'").fetchone()["c"] == 0
+
+
+def test_legacy_preview_does_not_spend(client, conn):
+    conn.execute(
+        "INSERT INTO legacy_links(code, target, max_uses, uses, created_at) "
+        "VALUES ('abcd2346', 'https://example.com/old', 1, 0, ?)", (security.utcnow(),))
+    resp = client.get("/abcd2346", headers={"User-Agent": "WhatsApp/2.23"})
+    assert resp.status_code == 200
+    assert conn.execute("SELECT uses FROM legacy_links WHERE code='abcd2346'"
+                        ).fetchone()["uses"] == 0

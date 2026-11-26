@@ -3,28 +3,16 @@
 {% block section %}Account{% endblock %}
 {% block crumb %}Create account{% endblock %}
 {% block body %}
-<div class="auth-wrap">
-  <div class="card auth-card">
-    <div class="auth-brand"><span class="brand-mark" aria-hidden="true">↗</span> <span>links<em>.kituwa</em></span></div>
-    <h1>Create your account</h1>
-    <p class="muted" style="margin:.3rem 0 1.1rem">Your passkey becomes the login. No email confirmation, no password to remember.</p>
-
+<section class="card card-pad narrow">
+  <h1>Create an account</h1>
+  <p class="muted" style="margin:.4rem 0 1rem">Not required for new links. An account only
+    shows links you made before encryption.</p>
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Email <input type="email" name="email" required autocomplete="email"></label>
+    <label>Password <input type="password" name="password" minlength="12" required autocomplete="new-password"></label>
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-
-    <a class="btn btn-primary btn-block" href="{{ url_for('member_login') }}">Continue with Pocket ID</a>
-    <p class="hint" style="text-align:center;margin-top:.45rem">Creates the account from your verified Pocket ID email.</p>
-
-    <div class="divider">or</div>
-
-    <form method="post" class="stack">
-      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-      <label>Email <input type="email" name="email" autocomplete="username" required></label>
-      <label>Password <input type="password" name="password" autocomplete="new-password" minlength="12" required></label>
-      <p class="hint">At least 12 characters. We email a confirmation link that expires in two days.</p>
-      <button class="btn btn-block" type="submit">Create account with a password</button>
-    </form>
-
-    <p class="auth-alt">Already have an account? <a href="{{ url_for('login') }}">Sign in</a>.</p>
-  </div>
-</div>
+    <button class="btn btn-primary" type="submit">Create account</button>
+  </form>
+</section>
 {% endblock %}

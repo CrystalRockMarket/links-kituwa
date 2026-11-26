@@ -1,49 +1,151 @@
 {% extends "base.html" %}
-{% block title %}Short links that expire by use{% endblock %}
-{% block robots %}index,follow{% endblock %}
-{% block section %}Home{% endblock %}
-{% block crumb %}Overview{% endblock %}
+{% block title %}Encrypted links{% endblock %}
+{% block section %}Links{% endblock %}
+{% block crumb %}New link{% endblock %}
 {% block body %}
 <section class="hero">
   <div>
     <p class="kicker">links.kituwa.com</p>
-    <h1>A link that knows when it has been used — and stops working when it should.</h1>
-    <p class="lede">Paste any URL and get a short link back. Set how many times it may be opened, from once to unlimited. Keep a private record of every open, every device and every forward.</p>
+    <h1>A short link the server cannot read.</h1>
+    <p class="lede">Your browser encrypts the destination before anything is sent. The
+      server stores a sealed blob and a counter — it never sees the URL, the note or the
+      key. The key lives after the <code>#</code>, which browsers never transmit.</p>
     <div class="hero-actions">
-      <a class="btn btn-primary" href="{{ url_for('member_login') }}">Continue with Pocket ID</a>
-      <a class="btn" href="{{ url_for('signup') }}">Create an account</a>
+      <a class="btn btn-primary" href="#create">Make a link</a>
+      <a class="btn" href="{{ url_for('privacy') }}">What the server can see</a>
     </div>
-    <p class="hint" style="margin-top:.7rem">Passkey sign-in — fingerprint, face, device PIN or security key.</p>
   </div>
-
   <div class="hero-demo" aria-hidden="true">
-    <div class="line"><span class="chip chip-accent">1 use</span> <span class="mono muted">links.kituwa.com/7k3m9qpd</span></div>
-    <div class="line"><span class="chip chip-good">opened once</span> <span class="muted">302 → destination</span></div>
-    <div class="line"><span class="chip chip-bad">closed</span> <span class="muted">410 Gone, permanently</span></div>
-    <div class="line"><span class="chip">2 people</span> <span class="muted">logged with time, IP and referrer</span></div>
+    <div class="line"><span class="chip chip-accent">sealed</span> <span class="mono muted">AES-256-GCM in your browser</span></div>
+    <div class="line"><span class="chip chip-good">sent</span> <span class="mono muted">{ ciphertext, iv, options }</span></div>
+    <div class="line"><span class="chip">share</span> <span class="mono muted">/l/Ab3x…​#9fK2…</span></div>
+    <div class="line"><span class="chip chip-bad">gone</span> <span class="mono muted">410, content wiped</span></div>
+  </div>
+</section>
+
+<section class="card card-pad create-card" id="create">
+  <h2>Make a link</h2>
+  <form id="create-form" class="create-grid" autocomplete="off" novalidate>
+    <div class="span-2" id="url-rows">
+      <label>Destination URL
+        <input type="url" name="url" placeholder="https://example.com/the-thing" required
+               inputmode="url" spellcheck="false">
+      </label>
+    </div>
+    <div class="span-2 row" style="margin:-.35rem 0 .2rem">
+      <button type="button" class="btn btn-ghost btn-sm" id="add-url">+ Add another URL</button>
+      <span class="hint">Bundle up to 10 links in one sealed payload.</span>
+    </div>
+
+    <label class="span-2">Note shown to the recipient (optional)
+      <input type="text" name="note" maxlength="300" placeholder="Here is the doc we talked about">
+    </label>
+
+    <label>Uses
+      <select name="max_uses" id="max-uses">
+        <option value="1" selected>1 — burn after reading</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="custom">Custom…</option>
+        <option value="0">Unlimited</option>
+      </select>
+    </label>
+    <label id="custom-uses-wrap" hidden>Custom uses
+      <input type="number" name="custom_uses" min="1" max="100000" value="25">
+    </label>
+
+    <label>Expires
+      <select name="expires" id="expires">
+        <option value="600">10 minutes</option>
+        <option value="3600">1 hour</option>
+        <option value="86400" selected>1 day</option>
+        <option value="604800">7 days</option>
+        <option value="2592000">30 days</option>
+        <option value="custom">Custom…</option>
+        <option value="0">Never</option>
+      </select>
+    </label>
+    <label id="custom-expiry-wrap" hidden>Custom minutes
+      <input type="number" name="custom_expiry" min="1" max="43200" value="120">
+    </label>
+
+    <label>Not before
+      <select name="not_before" id="not-before">
+        <option value="0" selected>Active now</option>
+        <option value="600">In 10 minutes</option>
+        <option value="3600">In 1 hour</option>
+        <option value="86400">In 1 day</option>
+        <option value="custom">Custom…</option>
+      </select>
+    </label>
+    <label id="custom-notbefore-wrap" hidden>Custom minutes
+      <input type="number" name="custom_not_before" min="1" max="43200" value="60">
+    </label>
+
+    <label>Password (optional)
+      <input type="password" name="password" minlength="8" placeholder="Both the link and the password are required">
+    </label>
+    <label>After the click
+      <select name="redirect_mode">
+        <option value="auto" selected>Go straight to the site</option>
+        <option value="manual">Show the address, I press Go</option>
+      </select>
+    </label>
+
+    <div class="span-2 row" style="margin-top:.35rem">
+      <button class="btn btn-primary" type="submit" id="create-btn">Encrypt and create link</button>
+      <span class="hint" id="status" role="status"></span>
+    </div>
+    <p class="error span-2" id="error" role="alert" hidden></p>
+  </form>
+
+  <div id="result" hidden>
+    <hr class="rule">
+    <h3>Your link</h3>
+    <div class="shorturl">
+      <input id="share-url" class="mono" readonly>
+      <button type="button" class="btn" data-copy="#share-url">Copy</button>
+    </div>
+    <p class="hint warn">Everything after <code>#</code> is the key. If you shorten this
+      with another service, or paste only the part before the <code>#</code>, the link
+      cannot be opened — and the privacy is gone.</p>
+    <h3>Manage it</h3>
+    <div class="shorturl">
+      <input id="manage-url" class="mono" readonly>
+      <button type="button" class="btn" data-copy="#manage-url">Copy</button>
+    </div>
+    <p class="hint">Keep this private. Anyone with it can extend, shorten or delete the
+      link — but still cannot read where it points.</p>
+    <div class="row">
+      <a class="btn" id="open-preview" href="#" target="_blank" rel="noopener noreferrer">Open it myself</a>
+      <button type="button" class="btn btn-ghost" id="another">Make another</button>
+    </div>
   </div>
 </section>
 
 <section class="feature-grid">
   <article class="card feature">
-    <div class="ico" aria-hidden="true">①</div>
-    <h2>One-time by default</h2>
-    <p>The first open is the only open. After that the link answers 410 Gone, permanently — including for a second click from the same person.</p>
+    <div class="ico" aria-hidden="true">🔒</div>
+    <h2>Zero-knowledge</h2>
+    <p>AES-256-GCM with a fresh 256-bit key per link, generated by your browser. The
+      key never leaves the fragment, so it is never sent to the server.</p>
   </article>
   <article class="card feature">
-    <div class="ico" aria-hidden="true">③</div>
-    <h2>Budgeted uses</h2>
-    <p>Send it to three people and allow three opens. The counter is incremented in one database transaction, so simultaneous clicks cannot exceed the budget.</p>
+    <div class="ico" aria-hidden="true">👁</div>
+    <h2>No tracking</h2>
+    <p>No IP addresses, user agents, referrers or device fingerprints. There is no
+      per-click log to leak, subpoena or sell.</p>
   </article>
   <article class="card feature">
-    <div class="ico" aria-hidden="true">↗</div>
-    <h2>You see the chain</h2>
-    <p>Every open logs time, device, referrer and IP. When a link turns up somewhere you did not send it, you get an alert instead of finding out later.</p>
+    <div class="ico" aria-hidden="true">⏳</div>
+    <h2>Gone means gone</h2>
+    <p>When the uses run out or the time passes, the ciphertext is overwritten in the
+      database. A preview fetch never spends a use; only a person clicking does.</p>
   </article>
 </section>
 
-<section class="card card-pad">
-  <h2>What “shared” means here</h2>
-  <p class="muted" style="margin-top:.4rem">A short link is anonymous by design — a recipient has no name until they identify themselves. We record three honest signals instead of inventing one: a second device opening the same link, a referrer from a mail or messaging host, and a pass-along link a recipient creates with the Share button. Each of those is recorded and can raise an alert.</p>
-</section>
+<script src="{{ url_for('static', filename='crypto.js') }}" integrity="{{ sri('crypto.js') }}" defer></script>
+<script src="{{ url_for('static', filename='create.js') }}" integrity="{{ sri('create.js') }}" defer></script>
 {% endblock %}

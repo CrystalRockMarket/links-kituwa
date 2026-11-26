@@ -1,8 +1,11 @@
-{% extends "recipient_base.html" %}
+{% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
+{% block section %}Links{% endblock %}
+{% block crumb %}{{ title }}{% endblock %}
 {% block body %}
-<div class="glyph" aria-hidden="true">·</div>
-<h1>{{ title }}</h1>
-<p class="muted">{{ body }}</p>
-<p class="hint" style="margin-top:1rem"><a href="{{ url_for('home') }}">links.kituwa.com</a></p>
+<section class="card card-pad">
+  <h1>{{ title }}</h1>
+  <p class="muted" style="margin-top:.5rem">{{ body }}</p>
+  <p style="margin-top:1rem"><a class="btn" href="{{ url_for('home') }}">Back to links</a></p>
+</section>
 {% endblock %}

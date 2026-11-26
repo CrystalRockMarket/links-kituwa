@@ -1,57 +1,42 @@
-// Progressive enhancement only; every page works without this file.
+/* Shell behaviour: mobile menu and copy-to-clipboard. No tracking, no analytics. */
+(function () {
+  "use strict";
+  var sidebar = document.getElementById("sidebar");
+  var scrim = document.getElementById("scrim");
+  var btn = document.getElementById("menu-btn");
 
-// Mobile navigation drawer
-(() => {
-  const btn = document.getElementById("menu-btn");
-  const bar = document.getElementById("sidebar");
-  const scrim = document.getElementById("scrim");
-  if (!btn || !bar || !scrim) return;
+  function close() {
+    if (!sidebar) return;
+    sidebar.classList.remove("is-open");
+    if (scrim) scrim.hidden = true;
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+  if (btn && sidebar) {
+    btn.addEventListener("click", function () {
+      var open = sidebar.classList.toggle("is-open");
+      if (scrim) scrim.hidden = !open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+  if (scrim) scrim.addEventListener("click", close);
 
-  const setOpen = (open) => {
-    bar.classList.toggle("is-open", open);
-    scrim.hidden = !open;
-    btn.setAttribute("aria-expanded", String(open));
-    btn.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
-  };
-
-  btn.addEventListener("click", () => setOpen(!bar.classList.contains("is-open")));
-  scrim.addEventListener("click", () => setOpen(false));
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") setOpen(false);
-  });
-  bar.addEventListener("click", (e) => {
-    if (e.target.closest("a")) setOpen(false);
+  document.addEventListener("click", function (ev) {
+    var target = ev.target.closest("[data-copy]");
+    if (!target) return;
+    var input = document.querySelector(target.getAttribute("data-copy"));
+    if (!input) return;
+    input.select();
+    var done = function () {
+      var old = target.textContent;
+      target.textContent = "Copied";
+      setTimeout(function () { target.textContent = old; }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(input.value).then(done).catch(function () {
+        document.execCommand("copy"); done();
+      });
+    } else {
+      document.execCommand("copy"); done();
+    }
   });
 })();
-
-// Copy a short URL
-document.addEventListener("click", async (event) => {
-  const btn = event.target.closest("[data-copy]");
-  if (!btn) return;
-  const input = document.querySelector(btn.dataset.copy);
-  if (!input) return;
-  try {
-    await navigator.clipboard.writeText(input.value);
-    btn.textContent = "Copied";
-    setTimeout(() => { btn.textContent = "Copy"; }, 1400);
-  } catch {
-    input.select();
-  }
-});
-
-// Mint an attributed pass-along link
-document.addEventListener("click", async (event) => {
-  const btn = event.target.closest("[data-share]");
-  if (!btn) return;
-  const res = await fetch(btn.dataset.share, { method: "POST", credentials: "same-origin" });
-  const data = await res.json().catch(() => ({ ok: false }));
-  const out = document.querySelector("#shareout");
-  if (!out) return;
-  out.hidden = false;
-  if (data.ok) {
-    out.value = data.url;
-    btn.textContent = "Pass-along link ready";
-  } else {
-    out.value = data.error || "Could not create a pass-along link.";
-  }
-});

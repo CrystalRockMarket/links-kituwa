@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Verify the code{% endblock %}
+{% block section %}Trust{% endblock %}
+{% block crumb %}Verify{% endblock %}
+{% block body %}
+<article class="prose card card-pad">
+  <h1>Prove what this server is running</h1>
+  <p class="lede">This site is open source. Everything below can be checked without
+    trusting this page: download the release, check its signature, rebuild it from the
+    public commit, and compare the hash.</p>
+
+  <h2>This deployment</h2>
+  <dl class="stat-grid">
+    <div class="card stat"><dt>Version</dt><dd class="mono">{{ release.get('version', 'dev') }}</dd></div>
+    <div class="card stat"><dt>Commit</dt><dd class="mono trunc" title="{{ release.get('commit', '') }}">{{ (release.get('commit') or 'unknown')[:12] }}</dd></div>
+    <div class="card stat"><dt>Built</dt><dd class="mono">{{ (release.get('built_at') or '—')|dt }}</dd></div>
+    <div class="card stat"><dt>Deployed tree</dt><dd class="mono trunc" title="{{ release.get('deployed', {}).get('tree', '') }}">{{ (release.get('deployed', {}).get('tree') or 'not reported')[:16] }}</dd></div>
+  </dl>
+
+  <table class="list">
+    <tbody>
+      <tr><th>Source</th><td><a href="{{ repo_url }}" rel="noopener">{{ repo_url }}</a></td></tr>
+      <tr><th>Release artifact</th><td class="mono">
+        {% if release.get('tarball') %}<a href="{{ url_for('release_artifact', name=release.get('tarball')) }}">{{ release.get('tarball') }}</a>{% else %}—{% endif %}
+      </td></tr>
+      <tr><th>SHA-256</th><td class="mono trunc" title="{{ release.get('sha256', '') }}">{{ release.get('sha256') or '—' }}</td></tr>
+      <tr><th>Manifest</th><td><a href="{{ url_for('release_manifest') }}">release.json</a> · <a href="{{ url_for('release_sig') }}">signature</a> · <a href="{{ url_for('release_pub') }}">public key</a></td></tr>
+      <tr><th>Deployed check</th><td class="mono">{{ (release.get('deployed', {}).get('checked_at') or '—')|dt }}</td></tr>
+      <tr><th>Files verified</th><td class="mono">{{ release.get('deployed', {}).get('files_checked', '—') }}</td></tr>
+      <tr><th>Unexpected files</th><td class="mono">{{ release.get('deployed', {}).get('unexpected', 'not reported') }}</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Check it yourself</h2>
+  <pre class="code">set -e
+base=https://links.kituwa.com
+
+# 1. Fetch the manifest, its signature and the signing key.
+curl -fsSLO $base/release.json
+curl -fsSLO $base/release.json.sig
+curl -fsSLO $base/release.pub
+
+# 2. The manifest is signed with an Ed25519 key held by the operator.
+openssl dgst -sha256 -verify release.pub -signature release.json.sig release.json
+
+# 3. Download the exact artifact this server deploys and hash it.
+tarball=$(python3 -c 'import json;print(json.load(open("release.json"))["tarball"])')
+commit=$(python3 -c 'import json;print(json.load(open("release.json"))["commit"])')
+curl -fsSLO $base/release/$tarball
+sha256sum $tarball
+# compare with "sha256" in release.json
+
+# 4. Rebuild the artifact from the public commit and compare.
+git clone {{ repo_url }} links-kituwa
+cd links-kituwa && git checkout $commit
+git archive --format=tar.gz --prefix=links-kituwa/ HEAD > ../rebuilt.tar.gz
+cd .. && sha256sum rebuilt.tar.gz $tarball
+# the two hashes must match</pre>
+
+  <h2>What the hash proves</h2>
+  <ul>
+    <li>The artifact the site serves is byte-for-byte the tree at that public commit —
+      anyone who clones the repository can reproduce it with <code>git archive</code>.</li>
+    <li>The signature proves the manifest came from the operator's release key, not from
+      whoever happened to be serving HTTP that day.</li>
+    <li>The deployed-tree hash is computed on the host from the files the app actually
+      imports. If someone edits a file after deploying, this page changes or the hash
+      stops matching the signed artifact.</li>
+  </ul>
+  <p class="hint">A compromised server can lie on this page. The hash comparison above
+    is done on your machine, not in the browser, which is why the command block exists.
+    The strongest check is step 4: rebuild from the commit and compare.</p>
+</article>
+{% endblock %}

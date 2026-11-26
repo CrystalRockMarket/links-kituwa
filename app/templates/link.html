@@ -1,14 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ link['label'] or link['code'] }}{% endblock %}
 {% block section %}Links{% endblock %}
-{% block crumb %}{{ link['label'] or link['code'] }}{% endblock %}
-{% block actions %}
-  <a class="btn btn-sm" href="{{ url_for('app_home') }}">All links</a>
-{% endblock %}
+{% block crumb %}Legacy link{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
-    <p class="kicker">Link detail</p>
+    <p class="kicker">Legacy link</p>
     <h1>{{ link['label'] or 'Untitled link' }}</h1>
     <p class="page-sub dest">{{ link['target'] }}</p>
   </div>
@@ -36,59 +33,10 @@
     {% endif %}
     <span class="hint">Created {{ link['created_at']|dt }}{% if link['expires_at'] %} · expires {{ link['expires_at']|dt }}{% endif %}</span>
   </div>
-
   <dl class="stat-grid">
     <div class="card stat"><dt>Opens</dt><dd>{{ link['uses'] }}{% if link['max_uses'] is not none %} <span class="muted" style="font-size:.9rem">/ {{ link['max_uses'] }}</span>{% endif %}</dd></div>
-    <div class="card stat"><dt>People</dt><dd>{{ summary['visitors'] }}</dd></div>
-    <div class="card stat"><dt>Forwarded</dt><dd>{{ summary['shares'] }}</dd></div>
-    <div class="card stat"><dt>Previews</dt><dd>{{ summary['previews'] }}</dd></div>
   </dl>
-  <p class="hint">Preview fetches come from messengers and search engines and never spend a use.</p>
-</section>
-
-<section class="card" style="margin-top:1rem">
-  <div class="card-pad row-between" style="padding-bottom:.6rem">
-    <h2>Opens</h2>
-    <span class="chip">{{ opens|length }} recorded</span>
-  </div>
-  {% if not opens %}
-    <div class="empty" style="margin:0 1.25rem 1.25rem">No opens yet. Send the link and it will appear here.</div>
-  {% else %}
-  <div class="table-wrap">
-    <table class="list">
-      <thead><tr><th>When</th><th>Kind</th><th>IP</th><th>Referrer</th><th>Via</th><th>Device</th></tr></thead>
-      <tbody>
-      {% for o in opens %}
-        <tr>
-          <td class="muted mono">{{ o['ts']|dt }}</td>
-          <td><span class="chip {% if o['kind'] == 'open' %}chip-good{% endif %}">{{ o['kind'] }}</span></td>
-          <td class="mono">{{ o['ip'] or '—' }}</td>
-          <td class="mono trunc" title="{{ o['referer'] or '' }}">{{ o['referer'] or '—' }}</td>
-          <td class="mono">{{ (o['via'] or '—')[:10] }}</td>
-          <td class="mono trunc" title="{{ o['ua'] or '' }}">{{ (o['ua'] or '—')[:60] }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-</section>
-
-<section class="card" style="margin-top:1rem">
-  <div class="card-pad row-between" style="padding-bottom:.6rem">
-    <h2>Pass-along links</h2>
-    <span class="chip">{{ shares|length }}</span>
-  </div>
-  {% if not shares %}
-    <div class="empty" style="margin:0 1.25rem 1.25rem">None yet. A recipient of an unlimited link can create one to forward it with attribution.</div>
-  {% else %}
-  <ul class="alerts" style="margin:0 1.25rem 1.25rem">
-    {% for s in shares %}
-      <li><span class="kind">{{ s['opens'] }} opens</span>
-        <span class="mono">{{ base_url }}/{{ link['code'] }}?via={{ s['token'] }}</span>
-        <time>{{ s['created_at']|dt }}</time></li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+  <p class="hint">This link predates encryption. Its destination is stored in plaintext
+    and no click data is recorded for it. It is deleted when it expires or is used up.</p>
 </section>
 {% endblock %}

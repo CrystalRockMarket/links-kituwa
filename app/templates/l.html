@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>You have been sent a link · links.kituwa.com</title>
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="secret" data-link-id="{{ link_id }}">
+<main class="secret-card" id="card">
+  <header class="secret-head">
+    <span class="brand-text">links<em>.kituwa</em></span>
+    <span class="chip">encrypted link</span>
+  </header>
+
+  <section id="step-loading" class="secret-step">
+    <p class="muted">Reading the link…</p>
+  </section>
+
+  <section id="step-nokey" class="secret-step" hidden>
+    <h1>This link is missing its key</h1>
+    <p>The part after <code>#</code> was not included. Ask the sender to copy the whole
+      link again — including everything after the <code>#</code>.</p>
+  </section>
+
+  <section id="step-intro" class="secret-step" hidden>
+    <p class="kicker">Someone sent you a link</p>
+    <h1>Open it?</h1>
+    <p class="muted" id="uses-line">Opening it uses one of its allowed opens.</p>
+    <button class="btn btn-primary btn-lg" id="reveal" type="button">Reveal the link</button>
+    <p class="hint">Nothing is counted until you press this button. Chat apps and mail
+      previewers cannot burn the link.</p>
+  </section>
+
+  <section id="step-password" class="secret-step" hidden>
+    <p class="kicker">Password required</p>
+    <h1>Enter the password</h1>
+    <p class="muted">The sender protected this link with a password. The server never
+      receives it.</p>
+    <label>Password
+      <input type="password" id="password" autocomplete="off" minlength="1">
+    </label>
+    <button class="btn btn-primary" id="unlock" type="button">Unlock</button>
+    <p class="error" id="pw-error" role="alert" hidden></p>
+  </section>
+
+  <section id="step-done" class="secret-step" hidden>
+    <p class="kicker">You are going to</p>
+    <h1 class="domain" id="domain">—</h1>
+    <p class="mono muted" id="full-url"></p>
+    <p class="note" id="note" hidden></p>
+    <ul class="bundle" id="bundle" hidden></ul>
+    <p class="error" id="warn" role="alert" hidden></p>
+    <div class="row">
+      <a class="btn btn-primary btn-lg" id="go" href="#" rel="noopener noreferrer">Go to the site</a>
+      <button class="btn" id="copy" type="button">Copy address</button>
+    </div>
+    <p class="hint" id="countdown" hidden></p>
+  </section>
+
+  <section id="step-gone" class="secret-step" hidden>
+    <h1>This link is gone</h1>
+    <p class="muted" id="gone-reason">It has been used, expired or was removed.</p>
+  </section>
+
+  <section id="step-report" class="secret-step" hidden>
+    <h1>Report this link</h1>
+    <p class="muted">The operator cannot see what a link points to. If you paste the
+      destination below, you are choosing to reveal it for this report only.</p>
+    <label>What is wrong?
+      <select id="report-reason">
+        <option value="phishing">Phishing or a fake login page</option>
+        <option value="malware">Malware or a scam</option>
+        <option value="abuse">Harassment or illegal content</option>
+        <option value="other">Something else</option>
+      </select>
+    </label>
+    <label>Destination (optional)
+      <input type="url" id="report-url" placeholder="https://…" inputmode="url">
+    </label>
+    <div class="row">
+      <button class="btn btn-primary" id="report-send" type="button">Send report</button>
+      <button class="btn btn-ghost" id="report-cancel" type="button">Cancel</button>
+    </div>
+    <p class="hint" id="report-done" hidden>Thank you. The operator can disable the link.</p>
+  </section>
+
+  <footer class="secret-foot">
+    <button class="linkish" id="report-open" type="button">Report this link</button>
+    <a href="{{ url_for('privacy') }}" rel="noopener">Privacy</a>
+    <a href="{{ url_for('verify_page') }}" rel="noopener">Verify the code</a>
+  </footer>
+</main>
+<script src="{{ url_for('static', filename='crypto.js') }}" integrity="{{ sri('crypto.js') }}" defer></script>
+<script src="{{ url_for('static', filename='decrypt.js') }}" integrity="{{ sri('decrypt.js') }}" defer></script>
+</body>
+</html>

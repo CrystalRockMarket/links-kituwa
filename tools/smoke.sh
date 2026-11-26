@@ -1,65 +1,54 @@
 #!/usr/bin/env bash
 # End-to-end smoke test against a running instance.
-#   tools/smoke.sh http://127.0.0.1:8848
+#   tools/smoke.sh http://127.0.0.1:8891
 set -euo pipefail
-BASE="${1:-http://127.0.0.1:8848}"
-JAR="$(mktemp)"; PAGE="$(mktemp)"
-trap 'rm -f "$JAR" "$PAGE"' EXIT
+BASE="${1:-http://127.0.0.1:8891}"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
 say(){ printf '  %s\n' "$*"; }
-
 fail(){ printf 'FAIL: %s\n' "$*" >&2; exit 1; }
-
-code_of(){ grep -o 'code: [0-9]*' <<<"$1" | head -1 | awk '{print $2}'; }
+code(){ curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
 say "health"
 curl -fsS "$BASE/healthz" | grep -q '"ok":true' || fail "healthz"
 
-say "signup"
-curl -fsS -c "$JAR" -b "$JAR" "$BASE/signup" -o "$PAGE"
-CSRF=$(grep -o 'name="csrf" value="[^"]*"' "$PAGE" | head -1 | sed 's/.*value="//;s/"//')
-EMAIL="smoke$(date +%s)@example.com"
-curl -fsS -c "$JAR" -b "$JAR" -o /dev/null -X POST "$BASE/signup" \
-  --data-urlencode "csrf=$CSRF" --data-urlencode "email=$EMAIL" \
-  --data-urlencode "password=a long enough password" || fail "signup"
-say "  $EMAIL"
+say "create an encrypted link (server sees only a blob)"
+read -r CT IV <<<"$(python3 -c 'import os,base64;b=lambda n:base64.urlsafe_b64encode(os.urandom(n)).decode().rstrip("=");print(b(48), b(12))')"
+BODY=$(printf '{"ciphertext":"%s","iv":"%s","options":{"max_uses":1,"expires_in":3600}}' "$CT" "$IV")
+CREATED=$(curl -fsS -X POST "$BASE/api/links" -H 'Content-Type: application/json' -d "$BODY")
+ID=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["id"])' "$CREATED")
+TOKEN=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["manage_token"])' "$CREATED")
+say "  /l/$ID"
 
-say "verify (token from the newest outbox mail)"
-TOKEN=$(ls -t "${SL_DATA_DIR:-./data}"/outbox/*.eml | head -1 | xargs grep -oE '/verify/[A-Za-z0-9_-]+' | head -1 | cut -d/ -f3)
-[ -n "$TOKEN" ] || fail "no verification token"
-curl -fsS "$BASE/verify/$TOKEN" >/dev/null || fail "verify"
-[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/verify/$TOKEN")" = "410" ] || fail "token reuse not refused"
+say "the page does not spend a use"
+[ "$(code "$BASE/l/$ID")" = "200" ] || fail "decrypt page"
+[ "$(code "$BASE/api/links/$ID")" = "200" ] || fail "peek"
+USES=$(curl -fsS "$BASE/api/links/$ID" | python3 -c 'import json,sys;print(json.load(sys.stdin)["uses"])')
+[ "$USES" = "0" ] || fail "a page fetch spent a use"
 
-say "login"
-curl -fsS -c "$JAR" -b "$JAR" "$BASE/login" -o "$PAGE"
-CSRF=$(grep -o 'name="csrf" value="[^"]*"' "$PAGE" | head -1 | sed 's/.*value="//;s/"//')
-curl -fsS -c "$JAR" -b "$JAR" -o /dev/null -X POST "$BASE/login" \
-  --data-urlencode "csrf=$CSRF" --data-urlencode "email=$EMAIL" \
-  --data-urlencode "password=a long enough password" || fail "login"
+say "headers and no cookie on the secret surface"
+H=$(curl -sI "$BASE/l/$ID")
+grep -qi 'content-security-policy:.*default-src' <<<"$H" || fail "no CSP"
+grep -qi 'referrer-policy: no-referrer' <<<"$H" || fail "no referrer policy"
+grep -qi 'set-cookie' <<<"$H" && fail "cookie on /l/"
+grep -qi 'hub.kituwa.com' <<<"$H" && fail "third-party origin on /l/"
 
-say "create a one-time link"
-curl -fsS -c "$JAR" -b "$JAR" "$BASE/app" -o "$PAGE"
-CSRF=$(grep -o 'name="csrf" value="[^"]*"' "$PAGE" | head -1 | sed 's/.*value="//;s/"//')
-curl -fsS -c "$JAR" -b "$JAR" -o /dev/null -X POST "$BASE/app/new" \
-  --data-urlencode "csrf=$CSRF" --data-urlencode "target=https://example.com/smoke" \
-  --data-urlencode "label=smoke" --data-urlencode "max_uses=1" || fail "create"
+say "consume once -> 200, again -> 410"
+[ "$(code -X POST "$BASE/api/links/$ID/consume" -H 'Content-Type: application/json' -d '{}')" = "200" ] || fail "first consume"
+[ "$(code -X POST "$BASE/api/links/$ID/consume" -H 'Content-Type: application/json' -d '{}')" = "410" ] || fail "second consume"
 
-LINK=$(sqlite3 "${SL_DATA_DIR:-./data}/secret-link.sqlite3" "select max(code) from links")
-[ -n "$LINK" ] || fail "no link row"
+say "manage token reports the spent state"
+curl -fsS -X POST "$BASE/api/manage/$ID" -H 'Content-Type: application/json' \
+  -d "{\"token\":\"$TOKEN\",\"action\":\"state\"}" | grep -q '"state": *"spent"' \
+  || fail "manage state"
 
-say "open once -> 302, open twice -> 410"
-[ "$(curl -s -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0 smoke' "$BASE/$LINK")" = "302" ] || fail "first open"
-[ "$(curl -s -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0 smoke' "$BASE/$LINK")" = "410" ] || fail "second open"
-
-say "preview fetch does not consume (new link)"
-curl -fsS -c "$JAR" -b "$JAR" "$BASE/app" -o "$PAGE"
-CSRF=$(grep -o 'name="csrf" value="[^"]*"' "$PAGE" | head -1 | sed 's/.*value="//;s/"//')
-curl -fsS -c "$JAR" -b "$JAR" -o /dev/null -X POST "$BASE/app/new" \
-  --data-urlencode "csrf=$CSRF" --data-urlencode "target=https://example.com/preview" \
-  --data-urlencode "max_uses=1"
-LINK2=$(sqlite3 "${SL_DATA_DIR:-./data}/secret-link.sqlite3" "select max(code) from links")
-curl -s -o /dev/null -w '' -A 'facebookexternalhit/1.1' "$BASE/$LINK2"
-USES=$(sqlite3 "${SL_DATA_DIR:-./data}/secret-link.sqlite3" "select uses from links where code='$LINK2'")
-[ "$USES" = "0" ] || fail "preview consumed a use"
-[ "$(curl -s -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0 smoke' "$BASE/$LINK2")" = "302" ] || fail "human open after preview"
+say "release provenance is served"
+if curl -fsS "$BASE/release.json" -o "$TMP/release.json" 2>/dev/null; then
+  grep -q '"sha256"' "$TMP/release.json" || fail "release.json has no sha256"
+  say "  manifest present"
+else
+  say "  no manifest (development run)"
+fi
+[ "$(code "$BASE/verify")" = "200" ] || fail "/verify"
 
 say "all smoke checks passed"

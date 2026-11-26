@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Privacy{% endblock %}
+{% block section %}Trust{% endblock %}
+{% block crumb %}Privacy{% endblock %}
+{% block body %}
+<article class="prose card card-pad">
+  <h1>What this server can and cannot see</h1>
+  <p class="lede">Short version: it sees a sealed box, a counter and a clock. It does
+    not see what is inside the box, who opened it, or where they came from.</p>
+
+  <h2>The server can see</h2>
+  <ul>
+    <li>The random id of a link, e.g. <code>/l/Ab3xQ9…</code>.</li>
+    <li>An encrypted blob (AES-256-GCM ciphertext), its 96-bit IV, and a salt if the
+      link has a password.</li>
+    <li>How many opens are allowed, how many have happened, and when the link expires
+      or activates.</li>
+    <li>Whether a note exists inside the blob — a single yes/no flag, not its text.</li>
+    <li>When a link was created, rounded to the hour.</li>
+    <li>The hash of the manage token, never the token.</li>
+  </ul>
+
+  <h2>The server cannot see</h2>
+  <ul>
+    <li>The destination URL or URLs. They are encrypted in your browser before anything
+      is sent.</li>
+    <li>The note, the password, or the key. The key lives after the <code>#</code> in
+      the share link, and browsers never send a fragment to a server.</li>
+    <li>Who opened a link: no IP address, no user agent, no referrer, no device
+      fingerprint, no cookie, no per-click row.</li>
+  </ul>
+
+  <h2>What is logged</h2>
+  <p>Nothing about a link open. The web server writes no access-log line for
+    <code>/l/*</code>, <code>/m/*</code> or <code>/api/links/*</code>, and the
+    application stores no click record of any kind. Rate limiting keeps a short-lived
+    HMAC of the client address in process memory only; it is never written to disk and
+    is gone when the process restarts.</p>
+
+  <h2>Retention</h2>
+  <ul>
+    <li>A spent or expired link's ciphertext is overwritten immediately, not flagged.</li>
+    <li>The contentless row that remains answers <code>410 Gone</code> and is deleted
+      after seven days.</li>
+    <li>There is no archive of link content to retain.</li>
+  </ul>
+
+  <h2>Third parties</h2>
+  <p>The page you open from a link (<code>/l/…</code>) loads no third-party script, no
+    font, no analytics and no network bar — anything on that page could read the key.
+    The rest of the site loads only the Kituwa network bar from
+    <code>hub.kituwa.com</code>. There is no Google, no reCAPTCHA and no CDN.</p>
+
+  <h2>Links created before 26 November 2026</h2>
+  <p>Older links were made when this service stored destinations in plaintext. Their
+    destinations were disclosed to the server at creation and cannot be un-disclosed;
+    they keep working until they expire or are used up, and are then deleted. Their
+    click history — addresses, devices, referrers — was deleted when the new model went
+    live. Nothing new is recorded for them either.</p>
+
+  <h2>Open source</h2>
+  <p>The code that runs here is public at <a href="{{ repo_url }}" rel="noopener">{{
+    repo_url }}</a>. The <a href="{{ url_for('verify_page') }}">verify page</a> shows the
+    exact commit and how to check that this server runs it.</p>
+
+  <h2>What this does not protect against</h2>
+  <p>If the server itself were compromised, it could serve modified JavaScript to the
+    next visitor and read the key from that page. That is why the page is small, has no
+    third-party code, ships with strict CSP and SRI, and why the release is signed and
+    reproducible. It is also why the code is public: you do not have to trust the
+    operator's description of it.</p>
+</article>
+{% endblock %}

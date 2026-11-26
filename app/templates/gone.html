@@ -1,15 +1,25 @@
-{% extends "recipient_base.html" %}
-{% block title %}Link closed{% endblock %}
-{% block body %}
-<div class="glyph" aria-hidden="true">⛔</div>
-<h1>This link is closed</h1>
-<p class="muted">
-  {% if reason == 'expired' %}
-    It reached its expiry date and no longer opens.
-  {% else %}
-    It has been opened the number of times it was allowed, so it no longer works for anyone — including a second click from the same person.
-  {% endif %}
-</p>
-<p class="hint" style="margin-top:1rem">If you need access, ask the sender for a new link.</p>
-<p class="hint">Short links by <a href="https://links.kituwa.com/">links.kituwa.com</a></p>
-{% endblock %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link unavailable · links.kituwa.com</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="secret">
+<main class="secret-card">
+  <header class="secret-head">
+    <span class="brand-text">links<em>.kituwa</em></span>
+    <span class="chip chip-bad">gone</span>
+  </header>
+  <h1>This link is not available</h1>
+  <p class="muted">{{ reason }}</p>
+  <p class="hint">Links here are deleted the moment they expire or reach their open
+    budget. The content is wiped, not archived.</p>
+  <footer class="secret-foot"><a href="{{ url_for('home') }}">links.kituwa.com</a></footer>
+</main>
+</body>
+</html>
