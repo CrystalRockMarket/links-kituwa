@@ -93,6 +93,16 @@ def test_bundle_and_note_flags(client):
     assert r.status_code == 201
     peek = client.get(f"/api/links/{r.get_json()['id']}").get_json()
     assert peek["has_note"] is True
+    assert peek["kdf"] == "none"
+
+
+def test_peek_reports_the_kdf_so_the_password_is_asked_before_a_use_is_spent(client):
+    key = os.urandom(32)
+    sealed = seal({"v": 1, "urls": ["https://example.com/x"]}, key, "pw")
+    link_id = create(client, sealed, max_uses=1, expires_in=3600).get_json()["id"]
+    peek = client.get(f"/api/links/{link_id}").get_json()
+    assert peek["kdf"] == "pbkdf2-sha256-600k"
+    assert peek["uses"] == 0
 
 
 def test_full_round_trip_matches_the_browser_contract(client):

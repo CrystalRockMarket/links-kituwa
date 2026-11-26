@@ -163,7 +163,7 @@ def peek(conn: sqlite3.Connection, link_id: str) -> dict:
     """Public state of a link, without spending a use or revealing content."""
     row = conn.execute(
         "SELECT max_uses, uses, expires_at, not_before, disabled_at, spent_at, has_note, "
-        "created_at FROM links WHERE id=?", (link_id,),
+        "kdf, created_at FROM links WHERE id=?", (link_id,),
     ).fetchone()
     if row is None:
         return {"exists": False}
@@ -177,6 +177,7 @@ def peek(conn: sqlite3.Connection, link_id: str) -> dict:
         "not_before": row["not_before"],
         "state": state_of(row),
         "has_note": bool(row["has_note"]),
+        "kdf": row["kdf"],
         "created_at": row["created_at"],
     }
 
