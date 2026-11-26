@@ -1,5 +1,11 @@
 # AUDIT — links.kituwa.com (secret-link-kituwa)
 
+> **Superseded on 2026-11-26.** This audit describes the service before the
+> zero-knowledge cutover. The plaintext `target` column, the click tables, the
+> account tables and the legacy link table have all been removed; the running
+> schema is `links` and `reports` only. `docs/PLAN.md` records the decisions and
+> `README.md` describes the current design.
+
 Audit date: 2026-11-26. Pack 2.28.0. Protocols applied: 01, 03, 05, 08, 10, 13,
 16, 18, 21, 23, 29, 40, plus Protocol 1.
 
