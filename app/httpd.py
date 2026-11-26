@@ -139,8 +139,10 @@ def create_app(settings: Settings) -> Flask:
             abort(400, "Bad or missing CSRF token.")
 
     def bucket_key() -> str:
-        forwarded = request.headers.get("X-Forwarded-For") if settings.behind_proxy else None
-        ip = security.client_ip(request.remote_addr, forwarded)
+        # nginx overwrites X-Real-IP with the socket peer; X-Forwarded-For's first
+        # hop is attacker-controlled, so it is never trusted for rate limiting.
+        real = request.headers.get("X-Real-IP") if settings.behind_proxy else None
+        ip = security.client_ip(real or request.remote_addr, None)
         return security.bucket(settings.secret, ip)
 
     def today_fmt(value: str | None) -> str:
@@ -180,7 +182,8 @@ def create_app(settings: Settings) -> Flask:
 
     @app.get("/robots.txt")
     def robots():
-        body = "User-agent: *\nAllow: /$\nDisallow: /l/\nDisallow: /m/\nDisallow: /api/\n"
+        body = ("User-agent: *\nAllow: /\nDisallow: /l/\nDisallow: /m/\n"
+                "Disallow: /api/\nDisallow: /admin\n")
         return Response(body, mimetype="text/plain")
 
     @app.get("/.well-known/security.txt")
@@ -274,7 +277,7 @@ def create_app(settings: Settings) -> Flask:
         if settings.pow and limiter.under_pressure():
             proof = body.get("pow") or {}
             if not limits.verify(settings.secret, proof.get("challenge", ""),
-                                 proof.get("solution", "")):
+                                 proof.get("solution", ""), bits=limits.POW_BITS):
                 return jsonify(error="proof of work required", pow=True), 428
         opts = body.get("options") or {}
         try:

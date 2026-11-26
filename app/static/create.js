@@ -82,13 +82,14 @@
     }
 
     const urls = [];
+    let badUrl = false;
     form.querySelectorAll("input[name=url]").forEach(function (input) {
       const u = window.LK.parseUrl(input.value);
       if (u) urls.push(u.href);
-      else if (input.value.trim()) fail("Only http:// and https:// addresses are allowed.");
+      else if (input.value.trim()) badUrl = true;
     });
+    if (badUrl) { fail("Only http:// and https:// addresses are allowed."); return; }
     if (!urls.length) { fail("Enter at least one http(s) URL."); return; }
-    if (urls.length > 1) urls.length = Math.min(urls.length, 10);
 
     const note = (form.querySelector("input[name=note]").value || "").trim();
     const password = form.querySelector("input[name=password]").value || "";
@@ -99,6 +100,8 @@
     const maxUses = intValue(document.getElementById("max-uses"), "custom_uses", 1);
     const expiresIn = intValue(document.getElementById("expires"), "custom_expiry", 86400);
     const notBefore = intValue(document.getElementById("not-before"), "custom_not_before", 0);
+    const usesIsCustom = document.getElementById("max-uses").value === "custom";
+    if (usesIsCustom && (!maxUses || maxUses < 1)) { fail("Custom uses must be 1 or more."); return; }
     if (maxUses !== 0 && (!maxUses || maxUses < 1)) { fail("Uses must be 1 or more."); return; }
     if (expiresIn !== 0 && expiresIn < 60) { fail("Expiry must be at least one minute."); return; }
     if (expiresIn !== 0 && notBefore >= expiresIn) {
@@ -110,7 +113,7 @@
 
     btn.disabled = true;
     try {
-      say(password ? "Deriving the key (Argon2-class cost)…" : "Encrypting in your browser…");
+      say(password ? "Deriving the key (600,000 rounds)…" : "Encrypting in your browser…");
       const key = window.LK.newKey();
       const sealed = await window.LK.seal(payload, key, password);
       const options = {

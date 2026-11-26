@@ -9,6 +9,15 @@
     trusting this page: download the release, check its signature, rebuild it from the
     public commit, and compare the hash.</p>
 
+  {% set dep = release.get('deployed', {}) %}
+  {% if dep.get('match') %}
+  <p class="chip chip-good chip-inline">The deployed files match the signed artifact</p>
+  {% elif dep %}
+  <p class="chip chip-bad chip-inline">The deployed files do NOT match the signed artifact — check before trusting this host</p>
+  {% else %}
+  <p class="chip chip-warn chip-inline">No deployed-tree check recorded</p>
+  {% endif %}
+
   <h2>This deployment</h2>
   <dl class="stat-grid">
     <div class="card stat"><dt>Version</dt><dd class="mono">{{ release.get('version', 'dev') }}</dd></div>
