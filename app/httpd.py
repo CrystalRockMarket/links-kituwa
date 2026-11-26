@@ -67,6 +67,7 @@ def create_app(settings: Settings) -> Flask:
     app.config.update(
         SECRET_KEY=settings.secret,
         MAX_CONTENT_LENGTH=settings.max_body,
+        SEND_FILE_MAX_AGE_DEFAULT=0,   # always revalidate: a deploy must take effect
         SESSION_COOKIE_NAME="sl_admin",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
