@@ -72,7 +72,7 @@ def create_app(settings: Settings) -> Flask:
             "Content-Security-Policy",
             "default-src 'self'; img-src 'self' data: https://hub.kituwa.com; "
             "style-src 'self'; script-src 'self'; "
-            "connect-src 'self' https://hub.kituwa.com https://admin.kituwa.com; "
+            "connect-src 'self' https://hub.kituwa.com https://admin.kituwa.com https://id.kituwa.com; "
             "form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
         )
         return resp
