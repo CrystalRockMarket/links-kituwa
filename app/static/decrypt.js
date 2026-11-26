@@ -144,7 +144,8 @@
       let left = 3;
       const line = document.getElementById("countdown");
       line.hidden = false;
-      line.textContent = "Opening " + info.host + " in " + left + " seconds…";
+      line.textContent = "Opening " + info.host + " in " + left +
+        (left === 1 ? " second…" : " seconds…");
       timer = setInterval(function () {
         left -= 1;
         if (left <= 0) {
@@ -153,7 +154,8 @@
           if (target) location.replace(target.href);
           return;
         }
-        line.textContent = "Opening " + info.host + " in " + left + " seconds…";
+        line.textContent = "Opening " + info.host + " in " + left +
+          (left === 1 ? " second…" : " seconds…");
       }, 1000);
     }
   }

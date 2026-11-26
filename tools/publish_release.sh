@@ -58,6 +58,9 @@ chown ubuntu:ubuntu "\$ROOT/data/release/state.json"
 EOF
 
 echo "--- live checks ---"
-curl -fsS https://links.kituwa.com/healthz; echo
+for i in $(seq 1 20); do
+  curl -fsS https://links.kituwa.com/healthz && break
+  sleep 1
+done; echo
 curl -fsS https://links.kituwa.com/release.json | python3 -c 'import json,sys;m=json.load(sys.stdin);print("live commit",m["commit_short"],"tree",m["tree"][:16])'
 curl -fsS https://links.kituwa.com/verify | grep -o 'RESULT\|MISMATCH' | head -1 || true
