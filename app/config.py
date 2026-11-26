@@ -32,12 +32,6 @@ class Settings:
     oidc_client_id: str = ""
     oidc_client_secret: str = ""
     oidc_group: str = "operators"
-    member_client_id: str = ""
-    member_client_secret: str = ""
-    smtp_host: str | None = None
-    mailbox_mode: str = "none"   # none | outbox | smtp
-    mail_from: str = "Links <links@kituwa.com>"
-    allow_signup: bool = True
     repo_url: str = "https://github.com/CrystalRockMarket/links-kituwa"
     release_dir: Path | None = None
     sweep: bool = True
@@ -95,13 +89,6 @@ def load_settings() -> Settings:
         oidc_client_id=os.environ.get("SL_OIDC_CLIENT_ID", "").strip(),
         oidc_client_secret=_secret_file(os.environ.get("SL_OIDC_CLIENT_SECRET_FILE", "")),
         oidc_group=os.environ.get("SL_OIDC_GROUP", "operators"),
-        member_client_id=os.environ.get("SL_MEMBER_CLIENT_ID", "").strip(),
-        member_client_secret=_secret_file(os.environ.get("SL_MEMBER_CLIENT_SECRET_FILE", "")),
-        smtp_host=os.environ.get("SL_SMTP_HOST") or None,
-        mailbox_mode=(os.environ.get("SL_SMTP_HOST") and "smtp")
-        or os.environ.get("SL_MAILBOX_MODE", "none"),
-        mail_from=os.environ.get("SL_MAIL_FROM", "Links <links@kituwa.com>"),
-        allow_signup=_bool("SL_ALLOW_SIGNUP", True),
         repo_url=os.environ.get("SL_REPO_URL",
                                 "https://github.com/CrystalRockMarket/links-kituwa").rstrip("/"),
         release_dir=Path(os.environ.get("SL_RELEASE_DIR",

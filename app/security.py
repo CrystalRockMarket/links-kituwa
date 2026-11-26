@@ -76,16 +76,6 @@ def valid_id(link_id: str) -> bool:
     return bool(ID_RE.match(link_id or ""))
 
 
-# --- legacy codes ----------------------------------------------------------
-ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz"
-CODE_LEN = 8
-CODE_RE = re.compile(r"^[%s]{%d}$" % (ALPHABET, CODE_LEN))
-
-
-def valid_code(code: str) -> bool:
-    return bool(CODE_RE.match(code or ""))
-
-
 # --- client address, used only to bucket rate limits ----------------------
 
 def client_ip(remote_addr: str | None, forwarded_for: str | None) -> str:
@@ -105,21 +95,3 @@ def client_ip(remote_addr: str | None, forwarded_for: str | None) -> str:
 def bucket(secret: bytes, ip: str) -> str:
     """An HMAC of the address for in-memory rate limiting. Never persisted."""
     return hmac.new(secret, (ip or "").encode(), hashlib.sha256).hexdigest()[:24]
-
-
-# --- messenger previews (legacy links only) -------------------------------
-# A preview fetch must not spend the last use of a link that is already in the
-# wild. This reads the request headers in memory; nothing is stored.
-_BOT_RE = re.compile(
-    r"(bot|crawler|spider|slurp|facebookexternalhit|whatsapp|telegrambot|slackbot|"
-    r"discordbot|twitterbot|linkedinbot|pinterest|skypeuripreview|embedly|"
-    r"headlesschrome|python-requests|curl/|wget/|go-http-client|preview)",
-    re.IGNORECASE,
-)
-
-
-def is_preview(ua: str, purpose: str) -> bool:
-    purpose = (purpose or "").lower()
-    if any(tag in purpose for tag in ("prefetch", "prerender", "preview")):
-        return True
-    return bool(_BOT_RE.search(ua or ""))

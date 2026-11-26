@@ -73,6 +73,8 @@ def create(
         raise ValueError(f"max_uses must be 1..{MAX_USES} or null")
     if expires_in is not None and not (60 <= expires_in <= MAX_EXPIRY_S):
         raise ValueError("expiry must be between 1 minute and 30 days")
+    if not_before_in and not (0 <= not_before_in <= MAX_EXPIRY_S):
+        raise ValueError("the activation time must be within 30 days")
     if not_before_in and expires_in is not None and not_before_in >= expires_in:
         raise ValueError("the activation time must be before the expiry")
     if redirect_mode not in {"auto", "manual"}:
@@ -252,47 +254,6 @@ def disable(conn: sqlite3.Connection, link_id: str) -> bool:
     return cur.rowcount == 1
 
 
-# --- legacy links (pre-cutover) -------------------------------------------
-
-def legacy_state_of(row: sqlite3.Row) -> str:
-    if row["destroyed_at"]:
-        return "destroyed"
-    if row["disabled_at"]:
-        return "paused"
-    if row["expires_at"] and row["expires_at"] <= security.utcnow():
-        return "expired"
-    if row["max_uses"] is not None and row["uses"] >= row["max_uses"]:
-        return "used up"
-    return "active"
-
-
-def legacy_consume(conn: sqlite3.Connection, code: str) -> Open:
-    """Resolve a pre-cutover link without recording anything about the click."""
-    now = security.utcnow()
-    conn.execute("BEGIN IMMEDIATE")
-    try:
-        row = conn.execute(
-            """UPDATE legacy_links SET uses = uses + 1
-                WHERE code = ?
-                  AND destroyed_at IS NULL
-                  AND disabled_at IS NULL
-                  AND (max_uses IS NULL OR uses < max_uses)
-                  AND (expires_at IS NULL OR expires_at > ?)
-                RETURNING target, max_uses, uses""",
-            (code, now),
-        ).fetchone()
-        if row is None:
-            conn.execute("ROLLBACK")
-            return Open("missing")
-        if row["max_uses"] is not None and row["uses"] >= row["max_uses"]:
-            conn.execute("UPDATE legacy_links SET destroyed_at=? WHERE code=?", (now, code))
-        conn.execute("COMMIT")
-    except Exception:
-        conn.execute("ROLLBACK")
-        raise
-    return Open("ok", ciphertext=row["target"].encode(), kdf="legacy")
-
-
 # --- retention ------------------------------------------------------------
 
 def sweep(conn: sqlite3.Connection) -> dict:
@@ -309,16 +270,11 @@ def sweep(conn: sqlite3.Connection) -> dict:
         "DELETE FROM links WHERE spent_at IS NOT NULL AND spent_at < ?",
         (security.iso_after(days=-TOMBSTONE_DAYS),),
     ).rowcount
-    legacy = conn.execute(
-        "DELETE FROM legacy_links WHERE destroyed_at IS NOT NULL "
-        "OR (expires_at IS NOT NULL AND expires_at <= ?) "
-        "OR (max_uses IS NOT NULL AND uses >= max_uses)", (now,),
-    ).rowcount
-    attempts = conn.execute("DELETE FROM login_attempts WHERE first_fail < ?",
-                            (security.iso_after(days=-1),)).rowcount
-    return {"wiped": wiped, "deleted": gone, "legacy_deleted": legacy,
-            "attempts_deleted": attempts}
+    reports = conn.execute(
+        "DELETE FROM reports WHERE resolved=1 AND created_at < ?",
+        (security.iso_after(days=-30),)).rowcount
+    return {"wiped": wiped, "deleted": gone, "reports_deleted": reports}
 
 
-__all__ = ["Open", "consume", "create", "disable", "legacy_consume", "manage",
-           "manage_hash", "new_id", "peek", "report", "sweep", "state_of"]
+__all__ = ["Open", "consume", "create", "disable", "manage", "manage_hash",
+           "new_id", "peek", "report", "sweep", "state_of"]

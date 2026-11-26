@@ -60,11 +60,12 @@ def test_api_never_sets_a_cookie(client):
     assert "Set-Cookie" not in resp.headers
 
 
-def test_migration_purges_click_history(tmp_path):
+def test_migration_drops_every_retired_table(tmp_path):
     path = tmp_path / "old.sqlite3"
     old = sqlite3.connect(path)
     old.executescript("""
         CREATE TABLE accounts (id INTEGER PRIMARY KEY, email TEXT, pw_hash TEXT, created_at TEXT);
+        CREATE TABLE sessions (token TEXT PRIMARY KEY, account_id INTEGER, csrf TEXT);
         CREATE TABLE links (id INTEGER PRIMARY KEY, account_id INTEGER, code TEXT UNIQUE,
             target TEXT, label TEXT, max_uses INTEGER, uses INTEGER, mode TEXT,
             created_at TEXT, expires_at TEXT, destroyed_at TEXT, disabled_at TEXT);
@@ -76,34 +77,36 @@ def test_migration_purges_click_history(tmp_path):
             created_at TEXT, opens INTEGER);
         CREATE TABLE alerts (id INTEGER PRIMARY KEY, account_id INTEGER, link_id INTEGER,
             kind TEXT, body TEXT, created_at TEXT, seen INTEGER);
+        CREATE TABLE verify_tokens (token TEXT PRIMARY KEY, account_id INTEGER, expires_at TEXT);
+        CREATE TABLE login_attempts (key TEXT PRIMARY KEY, fails INTEGER, first_fail TEXT);
     """)
     old.execute("INSERT INTO links(code,target,max_uses,uses,created_at) "
                 "VALUES ('abcd2345','https://example.com/secret',3,1,'2026-01-01T00:00:00+00:00')")
     old.execute("INSERT INTO opens(link_id,ts,ip,ua,referer,kind) "
                 "VALUES (1,'2026-01-01T00:00:00+00:00','203.0.113.5','UA','https://mail.x/','open')")
-    old.execute("INSERT INTO visitors(link_id,fp,first_seen,opens,last_ip) "
-                "VALUES (1,'fp','2026-01-01T00:00:00+00:00',1,'203.0.113.5')")
+    old.execute("INSERT INTO accounts(email,pw_hash,created_at) VALUES ('a@b.c','x','t')")
     old.commit()
     old.close()
 
     changes = dbmod.init_db(path)
-    assert any("legacy_links" in c for c in changes)
+    assert changes, "migration reported nothing"
 
     conn = dbmod.connect(path)
     tables = {r["name"] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table'")}
-    assert not (tables & {"opens", "visitors", "share_tokens", "alerts"})
-    row = conn.execute("SELECT * FROM legacy_links").fetchone()
-    assert row["code"] == "abcd2345"
-    assert row["target"] == "https://example.com/secret"
+    assert tables == {"links", "reports"}, tables
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(links)")}
+    assert "ciphertext" in cols and "target" not in cols
+    assert conn.execute("SELECT COUNT(*) c FROM links").fetchone()["c"] == 0
     conn.close()
 
 
 def test_rate_limit_on_creation(client):
+    limit = limits.DEFAULT_LIMITS["create"][0]
     payload = {"ciphertext": "AAAA", "iv": "AAAAAAAAAAAAAAAA", "options": {"max_uses": 1}}
-    codes = [client.post("/api/links", json=payload).status_code for _ in range(21)]
-    assert codes[:20] == [201] * 20
-    assert codes[20] == 429
+    codes = [client.post("/api/links", json=payload).status_code for _ in range(limit + 1)]
+    assert codes[:limit] == [201] * limit
+    assert codes[limit] == 429
 
 
 def test_proof_of_work_when_under_pressure(tmp_path, monkeypatch):
@@ -140,7 +143,8 @@ def test_invalid_ids_are_404(client):
         assert client.post(f"/api/links/{bad}/consume", json={}).status_code == 404
 
 
-def test_open_legacy_path_cannot_shadow_static_routes(client):
+def test_static_routes_are_not_shadowed(client):
     assert client.get("/privacy").status_code == 200
     assert client.get("/verify").status_code == 200
     assert client.get("/admin").status_code in (302, 303)
+    assert client.get("/.well-known/security.txt").status_code == 200

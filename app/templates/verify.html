@@ -20,6 +20,7 @@
   <table class="list">
     <tbody>
       <tr><th>Source</th><td><a href="{{ repo_url }}" rel="noopener">{{ repo_url }}</a></td></tr>
+      <tr><th>This commit</th><td class="mono">{% if release.get('commit') %}<a href="{{ repo_url }}/commit/{{ release.get('commit') }}" rel="noopener">{{ release.get('commit')[:12] }}</a>{% else %}—{% endif %}</td></tr>
       <tr><th>Release artifact</th><td class="mono">
         {% if release.get('tarball') %}<a href="{{ url_for('release_artifact', name=release.get('tarball')) }}">{{ release.get('tarball') }}</a>{% else %}—{% endif %}
       </td></tr>

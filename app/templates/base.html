@@ -30,12 +30,6 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>
         New link
       </a>
-      {% if g.account %}
-      <a class="side-link {% if active == 'links' %}is-active{% endif %}" href="{{ url_for('app_home') }}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4.93l1.41 1.41 1.83-1.83a3 3 0 1 1 4.24 4.24L15.66 11.6a3 3 0 0 1-4.24 0L10 13Zm4-2a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 19.07l-1.41-1.41-1.83 1.83a3 3 0 1 1-4.24-4.24L8.34 12.4a3 3 0 0 1 4.24 0L14 11Z"/></svg>
-        My old links
-      </a>
-      {% endif %}
       <p class="side-label">Trust</p>
       <a class="side-link {% if active == 'privacy' %}is-active{% endif %}" href="{{ url_for('privacy') }}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 9.3 8 10 4.6-.7 8-5 8-10V6l-8-4Zm0 4.5 4 2V12c0 3.2-1.8 6-4 6.7C9.8 18 8 15.2 8 12V8.5l4-2Z"/></svg>
@@ -59,15 +53,7 @@
     </nav>
 
     <div class="side-foot">
-      {% if g.account %}
-        <p class="trunc" title="{{ g.account['email'] }}">{{ g.account['email'] }}</p>
-        <form method="post" action="{{ url_for('logout') }}" class="inline">
-          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-          <button class="btn btn-ghost btn-sm" type="submit">Sign out</button>
-        </form>
-      {% else %}
-        <p><a href="{{ url_for('login') }}">Sign in</a></p>
-      {% endif %}
+      <p><a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('verify_page') }}">Verify</a></p>
       <p><a href="https://hub.kituwa.com/watchdog/estate-service-links-kituwa">Watchdog</a> · <a href="{{ url_for('healthz') }}">Status</a></p>
     </div>
   </aside>

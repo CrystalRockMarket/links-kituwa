@@ -176,13 +176,6 @@ cookie on the secret surface, and the rate limit.
 4. A spent or expired link's ciphertext is `NULL` immediately.
 5. `/l/*` and `/m/*` load no third-party origin and set no cookie.
 
-## Legacy links
-
-Links created before 26 November 2026 were stored in plaintext. They keep
-resolving at `/<code>` until they expire or are used up, and are then deleted.
-Their click history was deleted at the cutover. See `AUDIT.md` for the full
-migration record.
-
 ## License
 
 AGPL-3.0-or-later. If you run a modified version as a service, you must publish

@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Encrypted links{% endblock %}
+{% block head %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="links.kituwa.com">
+<meta property="og:title" content="A short link the server cannot read">
+<meta property="og:description" content="End-to-end encrypted short links. Your browser seals the destination; the key never reaches the server. No accounts, no tracking, open source.">
+<meta property="og:url" content="{{ base_url }}/">
+<meta name="twitter:card" content="summary">
+{% endblock %}
 {% block section %}Links{% endblock %}
 {% block crumb %}New link{% endblock %}
 {% block body %}

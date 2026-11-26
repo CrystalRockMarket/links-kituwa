@@ -18,8 +18,8 @@ import time
 from collections import defaultdict, deque
 
 DEFAULT_LIMITS = {
-    "create": (20, 3600),      # 20 links per hour per client
-    "consume": (120, 3600),    # 120 opens per hour per client
+    "create": (30, 3600),      # 30 links per hour per client
+    "consume": (600, 3600),    # 600 opens per hour per client (shared NATs)
     "report": (5, 3600),
     "manage": (60, 3600),
     "login": (20, 900),

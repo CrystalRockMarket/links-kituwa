@@ -174,25 +174,3 @@ def test_sweep_wipes_expired_and_deletes_old_tombstones(conn):
     assert result["deleted"] == 1
     assert conn.execute("SELECT COUNT(*) c FROM links").fetchone()["c"] == 1
     assert conn.execute("SELECT ciphertext FROM links").fetchone()["ciphertext"] is None
-
-
-def test_legacy_link_resolves_without_recording(client, conn):
-    conn.execute(
-        "INSERT INTO legacy_links(code, target, max_uses, uses, created_at) "
-        "VALUES ('abcd2345', 'https://example.com/old', 2, 0, ?)", (security.utcnow(),))
-    resp = client.get("/abcd2345")
-    assert resp.status_code == 302
-    assert resp.headers["Location"] == "https://example.com/old"
-    row = conn.execute("SELECT uses FROM legacy_links WHERE code='abcd2345'").fetchone()
-    assert row["uses"] == 1
-    assert conn.execute("SELECT COUNT(*) c FROM sqlite_master WHERE name='opens'").fetchone()["c"] == 0
-
-
-def test_legacy_preview_does_not_spend(client, conn):
-    conn.execute(
-        "INSERT INTO legacy_links(code, target, max_uses, uses, created_at) "
-        "VALUES ('abcd2346', 'https://example.com/old', 1, 0, ?)", (security.utcnow(),))
-    resp = client.get("/abcd2346", headers={"User-Agent": "WhatsApp/2.23"})
-    assert resp.status_code == 200
-    assert conn.execute("SELECT uses FROM legacy_links WHERE code='abcd2346'"
-                        ).fetchone()["uses"] == 0

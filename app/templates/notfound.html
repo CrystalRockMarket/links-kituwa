@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block robots %}noindex,nofollow{% endblock %}
+{% block section %}Links{% endblock %}
+{% block crumb %}Not found{% endblock %}
+{% block body %}
+<section class="card card-pad narrow">
+  <h1>That page does not exist</h1>
+  <p class="muted lead-sm">A link that has expired, been used up or been deleted answers
+    the same way. Check the whole link, including everything after the <code>#</code>.</p>
+  <p><a class="btn btn-primary" href="{{ url_for('home') }}">Make a link</a></p>
+</section>
+{% endblock %}
