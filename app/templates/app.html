@@ -14,12 +14,12 @@
 </div>
 
 <section class="card">
-  <div class="card-pad row-between" style="padding-bottom:.6rem">
+  <div class="card-pad row-between" class="card-head">
     <h2>Old links</h2>
     <span class="chip">{{ links|length }} total</span>
   </div>
   {% if not links %}
-    <div class="empty" style="margin:0 1.25rem 1.25rem">None. New links are made on the
+    <div class="empty" class="empty-inline">None. New links are made on the
       <a href="{{ url_for('home') }}#create">create page</a> and never stored in plaintext.</div>
   {% else %}
   <div class="table-wrap">

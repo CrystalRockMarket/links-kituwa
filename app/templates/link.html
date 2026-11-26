@@ -34,7 +34,7 @@
     <span class="hint">Created {{ link['created_at']|dt }}{% if link['expires_at'] %} · expires {{ link['expires_at']|dt }}{% endif %}</span>
   </div>
   <dl class="stat-grid">
-    <div class="card stat"><dt>Opens</dt><dd>{{ link['uses'] }}{% if link['max_uses'] is not none %} <span class="muted" style="font-size:.9rem">/ {{ link['max_uses'] }}</span>{% endif %}</dd></div>
+    <div class="card stat"><dt>Opens</dt><dd>{{ link['uses'] }}{% if link['max_uses'] is not none %} <span class="muted" class="small">/ {{ link['max_uses'] }}</span>{% endif %}</dd></div>
   </dl>
   <p class="hint">This link predates encryption. Its destination is stored in plaintext
     and no click data is recorded for it. It is deleted when it expires or is used up.</p>

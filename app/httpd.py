@@ -35,7 +35,8 @@ SECRET_CSP = (
 PUBLIC_CSP = (
     "default-src 'self'; script-src 'self' https://hub.kituwa.com; "
     "style-src 'self' https://hub.kituwa.com; img-src 'self' data: https://hub.kituwa.com; "
-    "connect-src 'self' https://hub.kituwa.com; font-src 'self'; object-src 'none'; "
+    "connect-src 'self' https://hub.kituwa.com https://id.kituwa.com; "
+    "font-src 'self'; object-src 'none'; "
     "base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 )
 SECRET_PREFIXES = ("/l/", "/m/", "/api/", "/s/")
