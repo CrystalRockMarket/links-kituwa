@@ -279,3 +279,12 @@ pre.code{background:#0e1730;color:#dbe2f5;border-radius:12px;padding:1rem;overfl
 .small{font-size:.9rem}
 
 .chip-inline{display:inline-flex}
+
+/* ---------- simple / advanced mode (default: simple) ---------------------- */
+.mode-switch{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--border-strong);
+  border-radius:999px;background:var(--surface-2)}
+.mode-switch button{border:0;background:transparent;font:inherit;font-size:.82rem;font-weight:600;
+  color:var(--muted);padding:.35rem .85rem;min-height:34px;border-radius:999px;cursor:pointer}
+.mode-switch button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.mode-hint{margin:.55rem 0 1rem}
+form.mode-simple .adv{display:none}

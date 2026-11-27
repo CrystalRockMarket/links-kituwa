@@ -3,15 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>{% block title %}Links{% endblock %} · links.kituwa.com</title>
-<meta name="description" content="End-to-end encrypted short links. The server never sees where a link points.">
+<title>{% block title %}Kituwa Links{% endblock %}{% block title_suffix %} · links.kituwa.com{% endblock %}</title>
+<meta name="description" content="{% block description %}Create end-to-end encrypted short links. Your browser encrypts the destination before it sends it.{% endblock %}">
 <meta name="robots" content="{% block robots %}index,follow{% endblock %}">
-<meta name="theme-color" content="#4f46e5">
-<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta name="theme-color" content="#F5F8F4">
+<link rel="canonical" href="{% block canonical %}{{ base_url }}{{ request.path }}{% endblock %}">
+<link rel="icon" href="{{ url_for('static', filename='brand/favicon.ico') }}" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='brand/favicon-32.png') }}">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='brand/favicon.svg') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/app/apple-touch-icon.png') }}">
+<link rel="manifest" href="{{ url_for('manifest') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" integrity="{{ sri('style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='brand/kituwa-links.css') }}" integrity="{{ sri('brand/kituwa-links.css') }}">
 {% block head %}{% endblock %}
 </head>
-<body>
+<body class="brand-kituwa">
 <kituwa-network data-site="site-links-kituwa">
   <a href="https://hub.kituwa.com/network/">Kituwa Network · Our other sites</a>
 </kituwa-network>
@@ -19,34 +25,34 @@
 
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <a class="brand" href="{{ url_for('home') }}">
-      <span class="brand-mark" aria-hidden="true">↗</span>
-      <span class="brand-text">links<em>.kituwa</em></span>
+    <a class="brand" href="{{ url_for('home') }}" aria-label="Kituwa Links home">
+      <img class="brand-logo" src="{{ url_for('static', filename='brand/logo/logo-light.svg') }}"
+           width="273" height="58" alt="links.kituwa">
     </a>
 
     <nav class="side-nav" aria-label="Main">
       <p class="side-label">Links</p>
       <a class="side-link {% if active == 'new' %}is-active{% endif %}" href="{{ url_for('home') }}#create">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>
+        <svg class="brand-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-add"></use></svg>
         New link
       </a>
       <p class="side-label">Trust</p>
       <a class="side-link {% if active == 'privacy' %}is-active{% endif %}" href="{{ url_for('privacy') }}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 9.3 8 10 4.6-.7 8-5 8-10V6l-8-4Zm0 4.5 4 2V12c0 3.2-1.8 6-4 6.7C9.8 18 8 15.2 8 12V8.5l4-2Z"/></svg>
+        <svg class="brand-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-shield-check"></use></svg>
         Privacy
       </a>
       <a class="side-link {% if active == 'verify' %}is-active{% endif %}" href="{{ url_for('verify_page') }}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z"/></svg>
+        <svg class="brand-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-check"></use></svg>
         Verify the code
       </a>
       <a class="side-link" href="{{ repo_url }}" rel="noopener">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+        <svg class="brand-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-code"></use></svg>
         Source code
       </a>
       {% if session.get('admin') %}
       <p class="side-label">Operators</p>
       <a class="side-link {% if active == 'admin' %}is-active{% endif %}" href="{{ url_for('admin_home') }}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8.94 5.06-1.8.72a7.2 7.2 0 0 1-.6 1.44l.86 1.74-1.98 1.98-1.74-.86a7.2 7.2 0 0 1-1.44.6l-.72 1.8h-2.8l-.72-1.8a7.2 7.2 0 0 1-1.44-.6l-1.74.86-1.98-1.98.86-1.74a7.2 7.2 0 0 1-.6-1.44l-1.8-.72v-2.8l1.8-.72a7.2 7.2 0 0 1 .6-1.44l-.86-1.74 1.98-1.98 1.74.86a7.2 7.2 0 0 1 1.44-.6l.72-1.8h2.8l.72 1.8a7.2 7.2 0 0 1 1.44.6l1.74-.86 1.98 1.98-.86 1.74a7.2 7.2 0 0 1 .6 1.44l1.8.72v2.8Z"/></svg>
+        <svg class="brand-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-settings"></use></svg>
         Console
       </a>
       {% endif %}
@@ -63,8 +69,11 @@
   <div class="main">
     <header class="topbar">
       <button class="menu-btn" type="button" id="menu-btn" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z"/></svg>
+        <svg class="brand-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-menu"></use></svg>
       </button>
+      <a class="brand-topbar-logo" href="{{ url_for('home') }}" aria-label="Kituwa Links home">
+        <img src="{{ url_for('static', filename='brand/logo/mark-light.svg') }}" width="30" height="30" alt="">
+      </a>
       <div class="crumbs">
         <span>{% block section %}Links{% endblock %}</span><span class="sep">/</span><b>{% block crumb %}{% endblock %}</b>
       </div>
@@ -75,7 +84,7 @@
 
     <main class="content" id="main">
       {% block body %}{% endblock %}
-      <footer class="foot">
+      <footer class="foot brand-footer">
         <span>links.kituwa.com — end-to-end encrypted, no tracking</span>
         <span><a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('verify_page') }}">Verify</a> · <a href="{{ repo_url }}" rel="noopener">GitHub</a> · <a href="https://hub.kituwa.com/watchdog/estate-service-links-kituwa">Watchdog</a></span>
       </footer>

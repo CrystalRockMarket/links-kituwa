@@ -1,12 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Encrypted links{% endblock %}
+{% block title %}Encrypted short links | Kituwa Links{% endblock %}
+{% block title_suffix %}{% endblock %}
+{% block description %}Create end-to-end encrypted short links. Your browser encrypts the destination before it sends it.{% endblock %}
+{% block canonical %}https://links.kituwa.com/{% endblock %}
 {% block head %}
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="links.kituwa.com">
-<meta property="og:title" content="A short link the server cannot read">
-<meta property="og:description" content="End-to-end encrypted short links. Your browser seals the destination; the key never reaches the server. No accounts, no tracking, open source.">
-<meta property="og:url" content="{{ base_url }}/">
-<meta name="twitter:card" content="summary">
+<meta property="og:site_name" content="Kituwa Links">
+<meta property="og:title" content="Encrypted short links | Kituwa Links">
+<meta property="og:description" content="Create end-to-end encrypted short links from your browser.">
+<meta property="og:url" content="https://links.kituwa.com/">
+<meta property="og:image" content="https://links.kituwa.com/static/brand/social/share-1200x630.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Kituwa Links. Encrypted short links. Two interlocking jade links on a dark green background.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Encrypted short links | Kituwa Links">
+<meta name="twitter:description" content="Create end-to-end encrypted short links from your browser.">
+<meta name="twitter:image" content="https://links.kituwa.com/static/brand/social/share-1200x630.jpg">
+<meta name="twitter:image:alt" content="Two interlocking jade links beside the words Encrypted short links.">
 {% endblock %}
 {% block section %}Links{% endblock %}
 {% block crumb %}New link{% endblock %}
@@ -23,16 +35,25 @@
       <a class="btn" href="{{ url_for('privacy') }}">What the server can see</a>
     </div>
   </div>
-  <div class="hero-demo" aria-hidden="true">
-    <div class="line"><span class="chip chip-accent">sealed</span> <span class="mono muted">AES-256-GCM in your browser</span></div>
-    <div class="line"><span class="chip chip-good">sent</span> <span class="mono muted">{ ciphertext, iv, options }</span></div>
-    <div class="line"><span class="chip">share</span> <span class="mono muted">/l/Ab3x…​#9fK2…</span></div>
-    <div class="line"><span class="chip chip-bad">gone</span> <span class="mono muted">410, content wiped</span></div>
-  </div>
+  <picture class="brand-hero-art" aria-hidden="true">
+    <source type="image/webp"
+            srcset="{{ url_for('static', filename='brand/art/hero-600.webp') }} 600w, {{ url_for('static', filename='brand/art/hero-960.webp') }} 960w, {{ url_for('static', filename='brand/art/hero-1440.webp') }} 1440w"
+            sizes="(max-width: 860px) 90vw, (max-width: 1120px) 34vw, 460px">
+    <img src="{{ url_for('static', filename='brand/art/hero-960.jpg') }}" width="960" height="640"
+         alt="" decoding="async">
+  </picture>
 </section>
 
 <section class="card card-pad create-card" id="create">
-  <h2>Make a link</h2>
+  <div class="card-head row-between">
+    <h2>Make a link</h2>
+    <div class="mode-switch" role="group" aria-label="How many options to show">
+      <button type="button" data-mode-set="simple" aria-pressed="true">Simple</button>
+      <button type="button" data-mode-set="complex" aria-pressed="false">Advanced</button>
+    </div>
+  </div>
+  <p class="hint mode-hint" id="mode-hint">A URL, how many opens and how long. That is all most links need.</p>
+
   <form id="create-form" class="create-grid" autocomplete="off" novalidate>
     <div class="span-2" id="url-rows">
       <label>Destination URL
@@ -40,14 +61,10 @@
                inputmode="url" spellcheck="false">
       </label>
     </div>
-    <div class="span-2 row" class="row-tight">
+    <div class="span-2 row row-tight adv">
       <button type="button" class="btn btn-ghost btn-sm" id="add-url">+ Add another URL</button>
       <span class="hint">Bundle up to 10 links in one sealed payload.</span>
     </div>
-
-    <label class="span-2">Note shown to the recipient (optional)
-      <input type="text" name="note" maxlength="300" placeholder="Here is the doc we talked about">
-    </label>
 
     <label>Uses
       <select name="max_uses" id="max-uses">
@@ -79,7 +96,21 @@
       <input type="number" name="custom_expiry" min="1" max="43200" value="120">
     </label>
 
-    <label>Not before
+    <label class="span-2 adv">Note shown to the recipient (optional)
+      <input type="text" name="note" maxlength="300" placeholder="Here is the doc we talked about">
+    </label>
+
+    <label class="adv">Password (optional)
+      <input type="password" name="password" minlength="8" placeholder="Both the link and the password are required">
+    </label>
+    <label class="adv">After the click
+      <select name="redirect_mode">
+        <option value="auto" selected>Go straight to the site</option>
+        <option value="manual">Show the address, I press Go</option>
+      </select>
+    </label>
+
+    <label class="adv">Not before
       <select name="not_before" id="not-before">
         <option value="0" selected>Active now</option>
         <option value="600">In 10 minutes</option>
@@ -88,21 +119,11 @@
         <option value="custom">Custom…</option>
       </select>
     </label>
-    <label id="custom-notbefore-wrap" hidden>Custom minutes
+    <label id="custom-notbefore-wrap" class="adv" hidden>Custom minutes
       <input type="number" name="custom_not_before" min="1" max="43200" value="60">
     </label>
 
-    <label>Password (optional)
-      <input type="password" name="password" minlength="8" placeholder="Both the link and the password are required">
-    </label>
-    <label>After the click
-      <select name="redirect_mode">
-        <option value="auto" selected>Go straight to the site</option>
-        <option value="manual">Show the address, I press Go</option>
-      </select>
-    </label>
-
-    <div class="span-2 row" class="row-submit">
+    <div class="span-2 row row-submit">
       <button class="btn btn-primary" type="submit" id="create-btn">Encrypt and create link</button>
       <span class="hint" id="status" role="status"></span>
     </div>
@@ -113,41 +134,50 @@
     <hr class="rule">
     <h3>Your link</h3>
     <div class="shorturl">
-      <input id="share-url" class="mono" readonly>
-      <button type="button" class="btn" data-copy="#share-url">Copy</button>
+      <input id="share-url" class="mono" readonly aria-label="Share link">
+      <button type="button" class="btn" data-copy="#share-url">Copy link</button>
     </div>
     <p class="hint warn">Everything after <code>#</code> is the key. If you shorten this
       with another service, or paste only the part before the <code>#</code>, the link
       cannot be opened — and the privacy is gone.</p>
     <h3>Manage it</h3>
     <div class="shorturl">
-      <input id="manage-url" class="mono" readonly>
+      <input id="manage-url" class="mono" readonly aria-label="Management link">
       <button type="button" class="btn" data-copy="#manage-url">Copy</button>
     </div>
     <p class="hint">Keep this private. Anyone with it can extend, shorten or delete the
       link — but still cannot read where it points.</p>
     <div class="row">
-      <a class="btn" id="open-preview" href="#" target="_blank" rel="noopener noreferrer">Open it myself</a>
+      <a class="btn" id="open-preview" href="#" target="_blank" rel="noopener noreferrer">Open link</a>
       <button type="button" class="btn btn-ghost" id="another">Make another</button>
     </div>
   </div>
 </section>
 
+<img class="brand-divider" src="{{ url_for('static', filename='brand/art/divider-light.svg') }}"
+     width="1200" height="48" alt="" aria-hidden="true">
+
 <section class="feature-grid">
   <article class="card feature">
-    <div class="ico" aria-hidden="true">🔒</div>
+    <div class="ico" aria-hidden="true">
+      <svg class="brand-icon" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-shield-check"></use></svg>
+    </div>
     <h2>Zero-knowledge</h2>
     <p>AES-256-GCM with a fresh 256-bit key per link, generated by your browser. The
       key never leaves the fragment, so it is never sent to the server.</p>
   </article>
   <article class="card feature">
-    <div class="ico" aria-hidden="true">👁</div>
+    <div class="ico" aria-hidden="true">
+      <svg class="brand-icon" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-eye-off"></use></svg>
+    </div>
     <h2>No tracking</h2>
     <p>No IP addresses, user agents, referrers or device fingerprints. There is no
       per-click log to leak, subpoena or sell.</p>
   </article>
   <article class="card feature">
-    <div class="ico" aria-hidden="true">⏳</div>
+    <div class="ico" aria-hidden="true">
+      <svg class="brand-icon" focusable="false" viewBox="0 0 24 24"><use href="{{ url_for('static', filename='brand/icons/sprite.svg') }}#icon-hourglass"></use></svg>
+    </div>
     <h2>Gone means gone</h2>
     <p>When the uses run out or the time passes, the ciphertext is overwritten in the
       database. A preview fetch never spends a use; only a person clicking does.</p>

@@ -1,0 +1,160 @@
+/* Load after the current site stylesheet. Asset paths are relative to this file. */
+:root {
+  --links-pine: #174735;
+  --links-mint: #9beac9;
+  --links-ink: #101c19;
+  --links-paper: #f5f8f4;
+  --links-leaf: #276750;
+  --links-muted: #496459;
+  --links-border: #d3e2d8;
+  --links-field-border: #759589;
+  --links-hover: #0f3428;
+}
+
+body.brand-kituwa:not(.secret) {
+  --canvas: var(--links-paper);
+  --surface: #fff;
+  --surface-2: #edf5ed;
+  --border: var(--links-border);
+  --border-strong: var(--links-field-border);
+  --ink: var(--links-ink);
+  --ink-2: #28433a;
+  --muted: var(--links-muted);
+  --muted-2: var(--links-muted);
+  --accent: var(--links-pine);
+  --accent-soft: #e2f1e8;
+  --accent-ink: #fff;
+  --radius: 16px;
+  --radius-sm: 10px;
+  font-family: system-ui, Arimo, sans-serif;
+}
+
+.brand-kituwa:not(.secret) .btn-primary:hover {
+  background: var(--links-hover);
+  border-color: var(--links-hover);
+}
+
+.brand-kituwa:not(.secret) :focus-visible {
+  outline: 2px solid var(--links-leaf);
+  outline-offset: 3px;
+}
+
+.brand-logo {
+  display: block;
+  width: min(100%, 174px);
+  height: auto;
+  flex-shrink: 0;
+}
+
+.brand-kituwa .hero {
+  gap: clamp(16px, 3vw, 36px);
+}
+
+.brand-kituwa .hero h1 {
+  font-size: clamp(1.9rem, 4vw, 3.3rem);
+  line-height: 1.06;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+.brand-hero-art {
+  align-self: center;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  background: var(--links-ink);
+  border-radius: 24px;
+}
+
+.brand-hero-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+}
+
+.brand-icon {
+  width: 1.2em;
+  height: 1.2em;
+  display: inline-block;
+  flex: 0 0 auto;
+  fill: none;
+  vertical-align: -.2em;
+}
+
+.brand-kituwa .side-link .brand-icon {
+  fill: none;
+  color: currentColor;
+}
+
+.brand-divider {
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-block: clamp(14px, 2.5vw, 26px);
+}
+
+.brand-kituwa .foot.brand-footer {
+  box-sizing: border-box;
+  padding: clamp(24px, 4vw, 48px) clamp(20px, 3vw, 36px);
+  border: 1px solid var(--links-border);
+  border-radius: 24px;
+  background: #edf5ed url('art/footer-light.svg') right center / cover no-repeat;
+  color: var(--links-ink);
+  gap: 14px 24px;
+}
+
+.brand-footer a {
+  color: var(--links-pine);
+  text-underline-offset: .18em;
+}
+
+.brand-kituwa .foot.brand-footer--dark {
+  background: var(--links-ink) url('art/footer-dark.svg') right center / cover no-repeat;
+  border-color: #355a4b;
+  color: var(--links-paper);
+}
+
+.brand-footer--dark a {
+  color: var(--links-mint);
+}
+
+.brand-kituwa .brand-footer--dark a:focus-visible {
+  outline-color: var(--links-mint);
+}
+
+@media (max-width: 860px) {
+  .brand-hero-art {
+    max-height: 280px;
+  }
+
+  .brand-hero-art img {
+    max-height: inherit;
+    object-fit: cover;
+  }
+}
+
+/* Keep conditional fields and messages collapsed until the app reveals them. */
+.brand-kituwa #create [hidden] {
+  display: none;
+}
+
+.brand-topbar-logo {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .brand-kituwa .brand-topbar-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    min-height: 44px;
+  }
+
+  .brand-topbar-logo img {
+    display: block;
+    width: 30px;
+    height: 30px;
+  }
+}

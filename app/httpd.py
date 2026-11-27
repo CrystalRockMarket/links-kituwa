@@ -180,6 +180,11 @@ def create_app(settings: Settings) -> Flask:
         conn().execute("SELECT 1").fetchone()
         return jsonify(ok=True, service="links-kituwa")
 
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return send_from_directory(app.static_folder, "manifest.webmanifest",
+                                   mimetype="application/manifest+json")
+
     @app.get("/robots.txt")
     def robots():
         body = ("User-agent: *\nAllow: /\nDisallow: /l/\nDisallow: /m/\n"

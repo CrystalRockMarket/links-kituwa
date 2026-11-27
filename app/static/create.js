@@ -10,6 +10,55 @@
   const errorEl = document.getElementById("error");
   const result = document.getElementById("result");
   const btn = document.getElementById("create-btn");
+  const hint = document.getElementById("mode-hint");
+  const MODE_KEY = "links.mode";
+
+  function advInUse() {
+    const found = [];
+    if ((form.querySelector("input[name=note]").value || "").trim()) found.push("a note");
+    if (form.querySelector("input[name=password]").value) found.push("a password");
+    if (document.getElementById("not-before").value !== "0") found.push("a start time");
+    if (form.querySelector("select[name=redirect_mode]").value !== "auto") found.push("manual redirect");
+    if (rows.querySelectorAll("input[name=url]").length > 1) found.push("more than one URL");
+    return found;
+  }
+
+  function applyMode(mode, remember) {
+    const simple = mode !== "complex";
+    form.classList.toggle("mode-simple", simple);
+    document.querySelectorAll("[data-mode-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed",
+        String((b.getAttribute("data-mode-set") === "complex") === !simple));
+    });
+    if (simple) {
+      const used = advInUse();
+      hint.textContent = used.length
+        ? "Simple view — the advanced options you set will still be used: " + used.join(", ") + "."
+        : "A URL, how many opens and how long. That is all most links need.";
+    } else {
+      hint.textContent = "Every option: a note, a password, a start time, redirect behaviour and bundles.";
+    }
+    if (remember) {
+      try { localStorage.setItem(MODE_KEY, simple ? "simple" : "complex"); } catch (e) {}
+    }
+  }
+
+  let stored = "simple";
+  try { stored = localStorage.getItem(MODE_KEY) || "simple"; } catch (e) {}
+  applyMode(stored, false);
+
+  document.querySelectorAll("[data-mode-set]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      applyMode(b.getAttribute("data-mode-set"), true);
+      if (b.getAttribute("data-mode-set") === "simple") {
+        form.querySelector("input[name=url]").focus();
+      }
+    });
+  });
+
+  form.addEventListener("input", function () {
+    if (form.classList.contains("mode-simple")) applyMode("simple", false);
+  });
 
   function say(text) { statusEl.textContent = text || ""; }
   function fail(text) {
@@ -21,7 +70,7 @@
     const count = rows.querySelectorAll("input[name=url]").length;
     if (count >= 10) { fail("Ten URLs is the maximum for one link."); return; }
     const wrap = document.createElement("div");
-    wrap.className = "url-row";
+    wrap.className = "url-row adv";
     const label = document.createElement("label");
     label.textContent = "Another URL";
     const input = document.createElement("input");
@@ -170,6 +219,7 @@
     form.querySelectorAll(".url-row").forEach(function (r) { r.remove(); });
     document.getElementById("share-url").value = "";
     document.getElementById("manage-url").value = "";
+    applyMode(form.classList.contains("mode-simple") ? "simple" : "complex", false);
     form.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
