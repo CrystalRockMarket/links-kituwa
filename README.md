@@ -8,6 +8,10 @@ Live: <https://links.kituwa.com> · Source: <https://github.com/CrystalRockMarke
 
 ## What it does
 
+- Two modes on the create form. **Simple** (the default) asks for a URL, how
+  many opens and how long — three answers, one button. **Advanced** adds a note,
+  a password, a start time, redirect behaviour and URL bundles. The choice is
+  remembered in the browser only.
 - Paste one or more URLs, choose uses and expiry, and get a share link.
 - The browser generates a 256-bit key, encrypts `{urls, note, createdAt}` with
   AES-256-GCM, and sends only `{ciphertext, iv, options}` to the server.
@@ -24,6 +28,13 @@ Live: <https://links.kituwa.com> · Source: <https://github.com/CrystalRockMarke
 
 Creator controls live at `/m/<id>#<manage-token>`: see uses left and time left,
 extend, shorten or delete. The server stores only the SHA-256 of that token.
+
+## Brand
+
+The interface uses the Kituwa Links kit in `app/static/brand/` (logo, icons,
+hero art, dividers, footer art, social card, app icons) and the token layer in
+`brand/kituwa-links.css`. Every asset is served from this origin; the decrypt
+and manage pages are deliberately unbranded and load a single stylesheet.
 
 ## Architecture
 
