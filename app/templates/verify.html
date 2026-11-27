@@ -19,7 +19,7 @@
   {% endif %}
 
   <h2>This deployment</h2>
-  <dl class="stat-grid">
+  <dl class="stat-grid compact">
     <div class="card stat"><dt>Version</dt><dd class="mono">{{ release.get('version', 'dev') }}</dd></div>
     <div class="card stat"><dt>Commit</dt><dd class="mono trunc" title="{{ release.get('commit', '') }}">{{ (release.get('commit') or 'unknown')[:12] }}</dd></div>
     <div class="card stat"><dt>Built</dt><dd class="mono">{{ (release.get('built_at') or '—')|dt }}</dd></div>
