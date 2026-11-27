@@ -55,13 +55,13 @@
   <p class="hint mode-hint" id="mode-hint">A URL, how many opens and how long. That is all most links need.</p>
 
   <form id="create-form" class="create-grid" autocomplete="off" novalidate>
-    <div class="span-2" id="url-rows">
+    <div class="full" id="url-rows">
       <label>Destination URL
         <input type="url" name="url" placeholder="https://example.com/the-thing" required
                inputmode="url" spellcheck="false">
       </label>
     </div>
-    <div class="span-2 row row-tight adv">
+    <div class="full row row-tight adv">
       <button type="button" class="btn btn-ghost btn-sm" id="add-url">+ Add another URL</button>
       <span class="hint">Bundle up to 10 links in one sealed payload.</span>
     </div>
@@ -96,7 +96,7 @@
       <input type="number" name="custom_expiry" min="1" max="43200" value="120">
     </label>
 
-    <label class="span-2 adv">Note shown to the recipient (optional)
+    <label class="full adv">Note shown to the recipient (optional)
       <input type="text" name="note" maxlength="300" placeholder="Here is the doc we talked about">
     </label>
 
@@ -123,11 +123,11 @@
       <input type="number" name="custom_not_before" min="1" max="43200" value="60">
     </label>
 
-    <div class="span-2 row row-submit">
+    <div class="full row row-submit">
       <button class="btn btn-primary" type="submit" id="create-btn">Encrypt and create link</button>
       <span class="hint" id="status" role="status"></span>
     </div>
-    <p class="error span-2" id="error" role="alert" hidden></p>
+    <p class="error full" id="error" role="alert" hidden></p>
   </form>
 
   <div id="result" hidden>

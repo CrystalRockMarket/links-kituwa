@@ -122,9 +122,12 @@ label.check input{width:18px;min-height:18px}
 .stat dd{margin:.3rem 0 0;font-size:1.45rem;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 
 .create-card{margin-bottom:1rem}
-.create-grid{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1fr) auto;
-  gap:.7rem;align-items:end}
+.create-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;align-items:end}
+.create-grid .span-2{grid-column:span 2}
+.create-grid .full{grid-column:1/-1}
+.create-grid select{min-width:0;text-overflow:ellipsis}
 @media (max-width:900px){ .create-grid{grid-template-columns:1fr 1fr} .create-grid .span-2{grid-column:span 2} }
+@media (max-width:560px){ .create-grid{grid-template-columns:1fr} .create-grid .span-2,.create-grid .full{grid-column:1/-1} }
 
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table.list{width:100%;border-collapse:collapse;font-size:.9rem}
