@@ -163,8 +163,7 @@ def create_app(settings: Settings) -> Flask:
         resp.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
         resp.headers.setdefault(
             "Permissions-Policy",
-            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), "
-            "interest-cohort=(), browsing-topics=()")
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
         resp.headers.setdefault("Strict-Transport-Security",
                                 "max-age=63072000; includeSubDomains; preload")
         resp.headers.setdefault("Content-Security-Policy",
